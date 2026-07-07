@@ -1,79 +1,115 @@
-// api/services/bufferPublisherService.js
-//
-// Single responsibility: publish one already-hosted image + caption to a
-// single Buffer profile, immediately (no scheduling). This module knows
-// nothing about Templated, local storage, or Discord — it only accepts a
-// plain `{ text, mediaUrl }` and talks to Buffer's classic v1 REST API
-// (https://buffer.com/developers/api).
-//
-// NOTE: this environment has no network access to api.bufferapp.com while
-// this module was written, so the request/response shape below follows
-// Buffer's documented v1 API (POST /updates/create.json, form-encoded body
-// with `text`, `profile_ids[]`, `media[photo]`, `now=true` to publish
-// immediately, Bearer auth). Re-verify against the live docs / a real
-// access token before relying on this in production, and adjust
-// `parsePublishResponse` if the live response shape differs.
-
 import axios from 'axios';
 import botConfig from '#bot/config.js';
 
-const DEFAULT_BASE_URL = 'https://api.bufferapp.com/1';
+const DEFAULT_BASE_URL = 'https://api.buffer.com';
 const REQUEST_TIMEOUT_MS = 10000;
 
-/**
- * Resolves and validates the Buffer configuration from env vars.
- */
 function getBufferConfig () {
-  const accessToken = botConfig.BUFFER_ACCESS_TOKEN || botConfig.api?.bufferAccessToken;
-  const profileId = botConfig.BUFFER_PROFILE_ID || botConfig.api?.bufferProfileId;
-  const baseUrl = botConfig.BUFFER_API_BASE_URL || botConfig.api?.bufferApiBaseUrl || DEFAULT_BASE_URL;
+  const accessToken =
+    botConfig.BUFFER_ACCESS_TOKEN || botConfig.api?.bufferAccessToken;
 
-  if (!accessToken || !profileId) {
-    throw new Error('Buffer is not configured (BUFFER_ACCESS_TOKEN / BUFFER_PROFILE_ID)');
+  // Compatibilité avec ton .env actuel.
+  // À renommer BUFFER_CHANNEL_ID plus tard si tu veux clarifier.
+  const channelId =
+    botConfig.BUFFER_CHANNEL_ID ||
+    botConfig.BUFFER_PROFILE_ID ||
+    botConfig.api?.bufferChannelId ||
+    botConfig.api?.bufferProfileId;
+
+  const baseUrl =
+    botConfig.BUFFER_API_BASE_URL ||
+    botConfig.api?.bufferApiBaseUrl ||
+    DEFAULT_BASE_URL;
+
+  if (!accessToken || !channelId) {
+    throw new Error(
+      'Buffer is not configured (BUFFER_ACCESS_TOKEN / BUFFER_CHANNEL_ID)'
+    );
   }
 
-  return { accessToken, profileId, baseUrl };
+  return { accessToken, channelId, baseUrl };
 }
 
-/**
- * Normalizes Buffer's response into the shape the rest of the app relies
- * on. Throws if the response doesn't look like a successful publication,
- * so callers treat "malformed response" the same as any other failure.
- * @param {unknown} data
- */
+function escapeGraphqlString (value) {
+  return JSON.stringify(String(value));
+}
+
 function parsePublishResponse (data) {
-  const update = data?.updates?.[0];
+  const result = data?.data?.createPost;
 
-  if (!data?.success || !update?.id) {
-    const message = data?.message || 'Buffer response did not confirm a successful publication';
-    throw new Error(message);
+  if (!result) {
+    const errors = data?.errors?.map((error) => error.message).join('; ');
+    throw new Error(errors || 'Buffer returned no createPost result');
   }
 
-  return { id: update.id, status: update.status || 'sent' };
+  // GraphQL union: Buffer retourne ceci pour une erreur métier.
+  if (result.message) {
+    throw new Error(result.message);
+  }
+
+  const post = result.post;
+
+  if (!post?.id) {
+    throw new Error('Buffer did not confirm a created post');
+  }
+
+  return {
+    id: post.id,
+    status: post.status || 'scheduled'
+  };
 }
 
 /**
- * Publishes a single image + caption to the configured Buffer profile,
- * immediately (Buffer's `now: true` behavior — no queue/schedule).
+ * Publie immédiatement un post image sur un channel Buffer.
  *
  * @param {{ text: string, mediaUrl: string }} payload
  * @returns {Promise<{ id: string, status: string }>}
  */
 export async function publishToBuffer ({ text, mediaUrl }) {
-  const { accessToken, profileId, baseUrl } = getBufferConfig();
+  const { accessToken, channelId, baseUrl } = getBufferConfig();
 
-  const body = new URLSearchParams();
-  body.append('text', text);
-  body.append('profile_ids[]', profileId);
-  body.append('media[photo]', mediaUrl);
-  body.append('now', 'true');
+  const mutation = `
+    mutation CreateImagePost {
+      createPost(
+        input: {
+          text: ${escapeGraphqlString(text)}
+          channelId: ${escapeGraphqlString(channelId)}
+          schedulingType: automatic
+          mode: shareNow
+          assets: [
+            {
+              image: {
+                url: ${escapeGraphqlString(mediaUrl)}
+              }
+            }
+          ]
+        }
+      ) {
+        ... on PostActionSuccess {
+          post {
+            id
+            status
+            text
+          }
+        }
+        ... on MutationError {
+          message
+        }
+      }
+    }
+  `;
 
-  const response = await axios.post(`${baseUrl}/updates/create.json`, body, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    },
-    timeout: REQUEST_TIMEOUT_MS
-  });
+  const response = await axios.post(
+    baseUrl,
+    { query: mutation },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: REQUEST_TIMEOUT_MS
+    }
+  );
 
-  return parsePublishResponse(response?.data);
+  return parsePublishResponse(response.data);
 }
