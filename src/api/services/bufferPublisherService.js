@@ -71,19 +71,19 @@ export async function publishToBuffer ({ text, mediaUrl }) {
   const mutation = `
     mutation CreateImagePost {
       createPost(
-        input: {
-          text: ${escapeGraphqlString(text)}
-          channelId: ${escapeGraphqlString(channelId)}
-          schedulingType: automatic
-          mode: shareNow
-          assets: [
-            {
-              image: {
-                url: ${escapeGraphqlString(mediaUrl)}
-              }
-            }
-          ]
-        }
+       input: {
+  text: ${escapeGraphqlString(text)}
+  channelIds: [${escapeGraphqlString(channelId)}]
+  schedulingType: automatic
+  mode: draft
+  assets: [
+    {
+      image: {
+        url: ${escapeGraphqlString(mediaUrl)}
+      }
+    }
+  ]
+}
       ) {
         ... on PostActionSuccess {
           post {
