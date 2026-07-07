@@ -73,7 +73,7 @@ export async function publishToBuffer ({ text, mediaUrl }) {
       createPost(
        input: {
   text: ${escapeGraphqlString(text)}
-  channelIds: [${escapeGraphqlString(channelId)}]
+  channelId: [${escapeGraphqlString(channelId)}]
   schedulingType: automatic
   mode: draft
   assets: [
