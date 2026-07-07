@@ -75,7 +75,7 @@ export async function publishToBuffer ({ text, mediaUrl }) {
   text: ${escapeGraphqlString(text)}
   channelId: [${escapeGraphqlString(channelId)}]
   schedulingType: automatic
-  mode: draft
+  mode: addToQueue
   assets: [
     {
       image: {
