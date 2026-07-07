@@ -8,8 +8,6 @@ function getBufferConfig () {
   const accessToken =
     botConfig.BUFFER_ACCESS_TOKEN || botConfig.api?.bufferAccessToken;
 
-  // Compatibilité avec ton .env actuel.
-  // À renommer BUFFER_CHANNEL_ID plus tard si tu veux clarifier.
   const channelId =
     botConfig.BUFFER_CHANNEL_ID ||
     botConfig.BUFFER_PROFILE_ID ||
@@ -30,10 +28,6 @@ function getBufferConfig () {
   return { accessToken, channelId, baseUrl };
 }
 
-function escapeGraphqlString (value) {
-  return JSON.stringify(String(value));
-}
-
 function parsePublishResponse (data) {
   const result = data?.data?.createPost;
 
@@ -42,7 +36,6 @@ function parsePublishResponse (data) {
     throw new Error(errors || 'Buffer returned no createPost result');
   }
 
-  // GraphQL union: Buffer retourne ceci pour une erreur métier.
   if (result.message) {
     throw new Error(result.message);
   }
@@ -60,7 +53,7 @@ function parsePublishResponse (data) {
 }
 
 /**
- * Publie immédiatement un post image sur un channel Buffer.
+ * Publie une story Instagram via Buffer.
  *
  * @param {{ text: string, mediaUrl: string }} payload
  * @returns {Promise<{ id: string, status: string }>}
@@ -69,22 +62,8 @@ export async function publishToBuffer ({ text, mediaUrl }) {
   const { accessToken, channelId, baseUrl } = getBufferConfig();
 
   const mutation = `
-    mutation CreateImagePost {
-      createPost(
-       input: {
-  text: ${escapeGraphqlString(text)}
-  channelId: [${escapeGraphqlString(channelId)}]
-  schedulingType: automatic
-  mode: addToQueue
-  assets: [
-    {
-      image: {
-        url: ${escapeGraphqlString(mediaUrl)}
-      }
-    }
-  ]
-}
-      ) {
+    mutation CreatePost($input: CreatePostInput!) {
+      createPost(input: $input) {
         ... on PostActionSuccess {
           post {
             id
@@ -99,9 +78,34 @@ export async function publishToBuffer ({ text, mediaUrl }) {
     }
   `;
 
+  const variables = {
+    input: {
+      channelId,
+      text,
+      schedulingType: 'automatic',
+      mode: 'addToQueue',
+      metadata: {
+        instagram: {
+          type: 'story',
+          shouldShareToFeed: false
+        }
+      },
+      assets: [
+        {
+          image: {
+            url: mediaUrl
+          }
+        }
+      ]
+    }
+  };
+
   const response = await axios.post(
     baseUrl,
-    { query: mutation },
+    {
+      query: mutation,
+      variables
+    },
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
