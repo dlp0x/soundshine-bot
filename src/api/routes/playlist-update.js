@@ -289,7 +289,7 @@ export default (client) => {
         // Continue quand même pour tester le stage channel
       }
 logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
-
+logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
       if (social === true) {
         await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
       }
