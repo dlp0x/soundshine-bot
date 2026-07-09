@@ -2,13 +2,39 @@ import express from 'express';
 import botConfig from '#bot/config.js';
 import { z } from 'zod';
 import logger from '#shared/logging/logger.js';
+import { publishPlaylistUpdate } from '#api/services/socialPublishService.js';
 
-const { VOICE_CHANNEL_ID, API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
+const { API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
+
+// Coerce the incoming `social` value (boolean, string, missing, ...) into a
+// real boolean. Anything falsy/unrecognized/omitted defaults to false.
+const socialFlagSchema = z.preprocess((val) => {
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') return val.trim().toLowerCase() === 'true';
+  return false;
+}, z.boolean());
 
 const playlistSchema = z.object({
   playlist: z.string().min(1, 'Playlist is required'),
-  topic: z.string().min(1, 'Topic is required')
+  topic: z.string().min(1, 'Topic is required'),
+  social: socialFlagSchema.default(false)
 });
+
+/**
+ * Fires the social orchestration entry point without letting failures
+ * affect the Discord update flow or the API response. The entry point
+ * itself already catches Templated-specific failures and returns a
+ * normalized result, so this is a defense-in-depth backstop.
+ */
+const triggerSocialPlaceholder = async ({ playlist, topic }) => {
+  try {
+    await publishPlaylistUpdate({ playlist, topic });
+  } catch (socialErr) {
+    logger.error(
+      `⚠️ [social] Social orchestration failed (ignored, Discord update unaffected): ${socialErr.message}`
+    );
+  }
+};
 
 // Fonction pour essayer de récupérer les caractères corrompus
 const tryFixEncoding = async (text) => {
@@ -18,7 +44,7 @@ const tryFixEncoding = async (text) => {
 
   // Si le texte contient des caractères de remplacement, essayer de le récupérer
   if (text.includes('')) {
-    await logger.info('🔧 Tentative de récupération d\'encodage pour:', text);
+    logger.info('🔧 Tentative de récupération d\'encodage pour:', text);
 
     // Essayer différents encodages
     const encodings = ['latin1', 'iso-8859-1', 'cp1252', 'utf8'];
@@ -37,7 +63,7 @@ const tryFixEncoding = async (text) => {
           return decoded;
         }
       } catch {
-        await logger.error(`❌ Échec avec ${encoding}`);
+        logger.error(`❌ Échec avec ${encoding}`);
       }
     }
   }
@@ -160,14 +186,14 @@ export default (client) => {
 
   router.post('/', async (req, res) => {
     try {
-      await logger.info('POST /v1/send-playlist');
+      logger.info('POST /v1/playlist-update');
 
       // Debug du raw body pour diagnostiquer l'encodage
       if (req.rawBody) {
-        await logger.info('🔍 DEBUG RAW BODY:');
-        await logger.info(`Raw body hex: ${req.rawBody.toString('hex')}`);
-        await logger.info(`Raw body utf8: ${req.rawBody.toString('utf8')}`);
-        await logger.info(`Raw body length: ${req.rawBody.length}`);
+        logger.info('🔍 DEBUG RAW BODY:');
+        logger.info(`Raw body hex: ${req.rawBody.toString('hex')}`);
+        logger.info(`Raw body utf8: ${req.rawBody.toString('utf8')}`);
+        logger.info(`Raw body length: ${req.rawBody.length}`);
       }
 
       // Vérification du token dans le header
@@ -184,7 +210,7 @@ export default (client) => {
           details: parseResult.error.errors
         });
       }
-      const { playlist, topic } = parseResult.data;
+      const { playlist, topic, social } = parseResult.data;
 
       // Normalisation des textes pour gérer les accents
       const normalizedPlaylist = await ensureAccentEncoding(playlist);
@@ -207,28 +233,28 @@ export default (client) => {
         `Topic après décodage Unicode: "${decodeUnicodeEscapes(topic)}"`
       );
 
-      await logger.info(`Topic original: ${topic}`);
-      await logger.info(`Topic normalisé: ${normalizedTopic}`);
-      await logger.info(`Playlist original: ${playlist}`);
-      await logger.info(`Playlist normalisé: ${normalizedPlaylist}`);
+      logger.info(`Topic original: ${topic}`);
+      logger.info(`Topic normalisé: ${normalizedTopic}`);
+      logger.info(`Playlist original: ${playlist}`);
+      logger.info(`Playlist normalisé: ${normalizedPlaylist}`);
 
       let playlistSent = false;
       let stageTopic = false;
 
-      await logger.info('=== DÉBUT DU TRAITEMENT ===');
+      logger.info('=== DÉBUT DU TRAITEMENT ===');
 
       // 1. Envoi de l'embed de playlist
-      await logger.info('🔄 Étape 1: Récupération du canal playlist...');
+      logger.info('🔄 Étape 1: Récupération du canal playlist...');
       const playlistChannel = client.channels.cache.get(PLAYLIST_CHANNEL_ID);
 
       if (!playlistChannel?.isTextBased()) {
-        await logger.error('❌ Canal playlist introuvable ou invalide');
+        logger.error('❌ Canal playlist introuvable ou invalide');
         return res
           .status(500)
           .json({ error: 'Canal Discord invalide pour la playlist.' });
       }
 
-      await logger.info(`Canal playlist trouvé: ${playlistChannel.name}`);
+      logger.info(`Canal playlist trouvé: ${playlistChannel.name}`);
 
       const description = `**${normalizedPlaylist}** est maintenant en ondes sur soundSHINE! 
       \nVous pouvez l'écouter en direct sur le https://soundshineradio.com`;
@@ -244,115 +270,43 @@ export default (client) => {
       };
 
       // Vérification finale de l'encodage avant envoi
-      await logger.info('🔍 Vérification finale de l\'encodage:');
-      await logger.info(`Description embed: "${description}"`);
-      await logger.info(
+      logger.info('🔍 Vérification finale de l\'encodage:');
+      logger.info(`Description embed: "${description}"`);
+      logger.info(
         `Description bytes: ${Buffer.from(description, 'utf8').toString('hex')}`
       );
 
-      await logger.info('🔄 Étape 2: Tentative d\'envoi de l\'embed...');
+      logger.info('🔄 Étape 2: Tentative d\'envoi de l\'embed...');
       try {
         await playlistChannel.send({ embeds: [embed] });
-        await logger.info('Embed playlist envoyé avec succès');
+        logger.info('Embed playlist envoyé avec succès');
         playlistSent = true;
       } catch (embedErr) {
-        await logger.error(
+        logger.error(
           `❌ Erreur lors de l'envoi de l'embed: ${embedErr.message}`
         );
-        await logger.error(`Code d'erreur embed: ${embedErr.code}`);
+        logger.error(`Code d'erreur embed: ${embedErr.code}`);
         // Continue quand même pour tester le stage channel
       }
+logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
 
-      // 2. Mise à jour du stage channel
-      await logger.info('🔄 Étape 3: Récupération du stage channel...');
-      try {
-        const stageChannel = await client.channels.fetch(VOICE_CHANNEL_ID);
-
-        if (!stageChannel || stageChannel.type !== 13) {
-          await logger.error(
-            `❌ Stage channel invalide. Type: ${stageChannel?.type}, ID: ${VOICE_CHANNEL_ID}`
-          );
-          throw new Error('Canal Stage invalide');
-        }
-
-        await logger.info(`Stage channel trouvé: ${stageChannel.name}`);
-
-        await logger.info('🔄 Étape 4: Vérification de l\'instance de stage...');
-        const { stageInstance } = stageChannel;
-
-        if (!stageInstance) {
-          await logger.info(
-            '🔄 Étape 5a: Aucune instance active, création en cours...'
-          );
-          try {
-            await stageChannel.createStageInstance({ topic: normalizedTopic });
-            await logger.success(
-              `Instance de stage créée avec sujet: ${normalizedTopic}`
-            );
-            stageTopic = true;
-          } catch (createErr) {
-            await logger.error(
-              `❌ Erreur lors de la création: ${createErr.message}`
-            );
-            await logger.error(`Code d'erreur création: ${createErr.code}`);
-            throw createErr;
-          }
-        } else {
-          await logger.info(
-            '🔄 Étape 5b: Instance existante, modification du sujet...'
-          );
-          try {
-            await stageInstance.edit({ topic: normalizedTopic });
-            await logger.success(`Sujet modifié: ${normalizedTopic}`);
-            stageTopic = true;
-          } catch (editErr) {
-            await logger.error(
-              `❌ Erreur lors de la modification: ${editErr.message}`
-            );
-            await logger.error(`Code d'erreur modification: ${editErr.code}`);
-            throw editErr;
-          }
-        }
-      } catch (stageErr) {
-        await logger.error(
-          `❌ Erreur générale stage channel: ${stageErr.message}`
-        );
-        await logger.error(`Code d'erreur stage: ${stageErr.code}`);
-
-        // Si au moins l'embed a fonctionné, on peut continuer
-        if (playlistSent) {
-          await logger.info('⚠️ Embed envoyé mais stage channel échoué');
-          return res.status(200).json({
-            status: 'PARTIAL',
-            message: 'Playlist envoyée mais échec du stage channel.',
-            playlist: normalizedPlaylist,
-            topic: normalizedTopic,
-            details: {
-              playlistSent: true,
-              stageTopic: false,
-              error: stageErr.message
-            }
-          });
-        } else {
-          throw stageErr;
-        }
+      if (social === true) {
+        await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
       }
 
-      await logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
       return res.status(200).json({
         status: 'OK',
-        message: 'Playlist et stage mis à jour avec succès.',
+        message: 'Playlist mise à jour avec succès.',
         playlist: normalizedPlaylist,
         topic: normalizedTopic,
         details: {
           playlistSent,
-          stageTopic
         }
       });
     } catch (err) {
-      await logger.error(`ERREUR FATALE: ${err.message}`);
-      await logger.error(`Code: ${err.code}`);
-      await logger.error(`Stack: ${err.stack}`);
+      logger.error(`ERREUR FATALE: ${err.message}`);
+      logger.error(`Code: ${err.code}`);
+      logger.error(`Stack: ${err.stack}`);
       return res
         .status(500)
         .json({ error: 'Erreur serveur lors du traitement.' });

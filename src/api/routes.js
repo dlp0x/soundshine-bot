@@ -11,15 +11,15 @@ export default function loadRoutes (app, client, logger) {
       status: 'online',
       timestamp: new Date().toISOString(),
       endpoints: {
-        health: '/health',
-        playlist: '/playlist-update',
+        health: '/v1/health',
+        playlist: '/v1/playlist-update',
         
       }
     });
   });
 
-  app.use('/health', healthRoutes(client, logger));
-  app.use('/playlist-update', playlistRoutes(client, logger));
+  app.use('/v1/health', healthRoutes(client, logger));
+  app.use('/v1/playlist-update', playlistRoutes(client, logger));
 
   // 404
   app.use((req, res) => {
