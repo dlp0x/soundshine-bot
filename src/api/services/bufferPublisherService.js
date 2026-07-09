@@ -48,7 +48,7 @@ function parsePublishResponse (data) {
 
   return {
     id: post.id,
-    status: post.status || 'scheduled'
+    status: post.status || 'addToQueue'
   };
 }
 
@@ -84,6 +84,7 @@ export async function publishToBuffer ({ text, mediaUrl }) {
       text,
       schedulingType: 'automatic',
       mode: 'addToQueue',
+      saveToDraft: true,
       metadata: {
         instagram: {
           type: 'story',
