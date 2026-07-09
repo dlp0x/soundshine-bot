@@ -144,6 +144,7 @@ const envSchema = z.object({
   TEMPLATED_API_BASE_URL: optionalUrlSchema(),
   BUFFER_ACCESS_TOKEN: optionalStringSchema(),
   BUFFER_PROFILE_ID: optionalStringSchema(),
+  BUFFER_CHANNEL_ID: optionalStringSchema(),
   BUFFER_API_BASE_URL: optionalUrlSchema(),
   SOCIAL_MEDIA_STORAGE_ROOT: stringWithDefault(
     '/home/soundshine/web/media.soundshineradio.com/public_html/social'
