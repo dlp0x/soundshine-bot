@@ -170,7 +170,7 @@ const debugEncoding = async (text, label) => {
   await logger.debug('================================');
 };
 
-export default (client) => {
+export default (gateway) => {
   const router = express.Router();
 
   // Configuration pour s'assurer que les données JSON sont correctement décodées
@@ -244,17 +244,7 @@ export default (client) => {
       logger.info('=== DÉBUT DU TRAITEMENT ===');
 
       // 1. Envoi de l'embed de playlist
-      logger.info('🔄 Étape 1: Récupération du canal playlist...');
-      const playlistChannel = client.channels.cache.get(PLAYLIST_CHANNEL_ID);
-
-      if (!playlistChannel?.isTextBased()) {
-        logger.error('❌ Canal playlist introuvable ou invalide');
-        return res
-          .status(500)
-          .json({ error: 'Canal Discord invalide pour la playlist.' });
-      }
-
-      logger.info(`Canal playlist trouvé: ${playlistChannel.name}`);
+      logger.info('🔄 Étape 1: Envoi de l\'embed via la gateway Discord...');
 
       const description = `**${normalizedPlaylist}** est maintenant en ondes sur soundSHINE! 
       \nVous pouvez l'écouter en direct sur le https://soundshineradio.com`;
@@ -277,15 +267,20 @@ export default (client) => {
       );
 
       logger.info('🔄 Étape 2: Tentative d\'envoi de l\'embed...');
-      try {
-        await playlistChannel.send({ embeds: [embed] });
+      const sendResult = await gateway.sendChannelMessage(PLAYLIST_CHANNEL_ID, { embeds: [embed] });
+
+      if (sendResult.delivered) {
         logger.info('Embed playlist envoyé avec succès');
         playlistSent = true;
-      } catch (embedErr) {
+      } else if (sendResult.reason === 'invalid_channel') {
+        logger.error('❌ Canal playlist introuvable ou invalide');
+        return res
+          .status(500)
+          .json({ error: 'Canal Discord invalide pour la playlist.' });
+      } else {
         logger.error(
-          `❌ Erreur lors de l'envoi de l'embed: ${embedErr.message}`
+          `❌ Erreur lors de l'envoi de l'embed: ${sendResult.error}`
         );
-        logger.error(`Code d'erreur embed: ${embedErr.code}`);
         // Continue quand même pour tester le stage channel
       }
 logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');

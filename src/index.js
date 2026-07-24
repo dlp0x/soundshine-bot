@@ -5,6 +5,7 @@
 import 'dotenv/config';
 import fs from 'fs';
 import WebServer from '#api/index.js';
+import { createDiscordControlServer } from './bot/internal/discordControlServer.js';
 import { startBot, stopBot } from './bot/startup.js';
 import config from './bot/config.js';
 import logger from '#shared/logging/logger.js';
@@ -18,6 +19,7 @@ const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.ur
 
 let botClient = null;
 let apiServer = null;
+let controlServer = null;
 let isShuttingDown = false;
 
 appState.initialize();
@@ -33,6 +35,10 @@ async function gracefulShutdown (signal = 'UNKNOWN') {
     if (apiServer) {
       await apiServer.stop();
       appState.setApiRunning(false);
+    }
+
+    if (controlServer) {
+      await controlServer.stop();
     }
 
     if (botClient) {
@@ -72,6 +78,12 @@ async function startApplication () {
       }
     );
 
+    if (config.API_GATEWAY_MODE === 'http') {
+      controlServer = createDiscordControlServer(botClient, logger, config);
+      controlServer.start(config.INTERNAL_CONTROL_PORT);
+      logger.api(`Gateway API en mode 'http' (contrôle interne sur le port ${config.INTERNAL_CONTROL_PORT})`);
+    }
+
     apiServer = new WebServer(botClient, logger);
     logger.banner('Initialisation du serveur API...');
 
@@ -100,6 +112,7 @@ async function startApplication () {
     try {
       if (botClient) await stopBot();
       if (apiServer) await apiServer.stop();
+      if (controlServer) await controlServer.stop();
       await database.disconnect();
     } catch (cleanupError) {
       logger.error('Erreur lors du cleanup:', cleanupError);

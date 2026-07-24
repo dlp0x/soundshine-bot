@@ -1,9 +1,14 @@
 import express from 'express';
+import { createDiscordGateway } from '#api/gateways/discordGateway.js';
 
 export function createJsonApp (router) {
   const app = express();
   app.use(router);
   return app;
+}
+
+export function createDiscordGatewayForPlaylist (options = {}) {
+  return createDiscordGateway(createDiscordClientForPlaylist(options));
 }
 
 export function createDiscordClientForPlaylist ({

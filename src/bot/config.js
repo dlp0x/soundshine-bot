@@ -152,6 +152,18 @@ const envSchema = z.object({
   SOCIAL_MEDIA_PUBLIC_BASE_URL: urlWithDefault('https://media.soundshineradio.com/social'),
   API_TOKEN: optionalStringSchema(),
   API_PORT: numericStringWithDefault('3000').default('3000'),
+  API_GATEWAY_MODE: z
+    .preprocess((value) => {
+      if (typeof value === 'undefined' || value === null || value === '') {
+        return 'inprocess';
+      }
+
+      return String(value).toLowerCase();
+    }, z.enum(['inprocess', 'http']))
+    .default('inprocess'),
+  INTERNAL_CONTROL_SECRET: optionalStringSchema(),
+  INTERNAL_CONTROL_PORT: numericStringWithDefault('3100').default('3100'),
+  INTERNAL_CONTROL_URL: urlWithDefault('http://127.0.0.1:3100'),
   LOG_LEVEL: z
     .preprocess((value) => {
       if (typeof value === 'undefined' || value === null || value === '') {
@@ -223,6 +235,10 @@ function buildConfig () {
 
     API_TOKEN: env.API_TOKEN,
     API_PORT: env.API_PORT,
+    API_GATEWAY_MODE: env.API_GATEWAY_MODE,
+    INTERNAL_CONTROL_SECRET: env.INTERNAL_CONTROL_SECRET,
+    INTERNAL_CONTROL_PORT: env.INTERNAL_CONTROL_PORT,
+    INTERNAL_CONTROL_URL: env.INTERNAL_CONTROL_URL,
     LOG_LEVEL: env.LOG_LEVEL,
 
     REQ_ROLE_ID: env.REQ_ROLE_ID,
@@ -274,6 +290,10 @@ function buildConfig () {
     api: {
       port: Number(env.API_PORT),
       token: env.API_TOKEN,
+      gatewayMode: env.API_GATEWAY_MODE,
+      internalControlSecret: env.INTERNAL_CONTROL_SECRET,
+      internalControlPort: Number(env.INTERNAL_CONTROL_PORT),
+      internalControlUrl: env.INTERNAL_CONTROL_URL,
       unsplashKey: env.UNSPLASH_ACCESS_KEY,
       streamUrl: env.STREAM_URL,
       jsonUrl: env.JSON_URL,
@@ -307,6 +327,10 @@ function buildConfig () {
 
     hasMediaStorage () {
       return !!(this.SOCIAL_MEDIA_STORAGE_ROOT && this.SOCIAL_MEDIA_PUBLIC_BASE_URL);
+    },
+
+    hasInternalControlSecret () {
+      return !!this.INTERNAL_CONTROL_SECRET;
     },
 
     validateServices () {
