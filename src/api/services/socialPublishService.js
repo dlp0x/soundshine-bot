@@ -54,7 +54,7 @@ export function formatProgramAnnouncement (topic, now = new Date()) {
  */
 export function buildSocialCaption (topic, playlist) {
   logger.info(`🎨 Templated render requested: ${topic} / ${playlist}`);
-  return `🎶 ${topic} is live now on soundSHINE! Playlist: ${playlist}`;
+  return `🎶 ${playlist} is live now on soundSHINE!`;
 }
 
 /**
