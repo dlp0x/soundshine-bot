@@ -122,12 +122,28 @@ const envSpecificPath = path.join(__dirname, `../.env.${envFileEnv}`);
 loadEnvFile(baseEnvPath);
 loadEnvFile(envSpecificPath);
 
+// src/api/main.js (Phase 3 split entrypoint, see docs/api-extraction-plan.md)
+// runs without a Discord client at all — it only ever talks to Discord via
+// the HTTP gateway. Detecting it here (rather than via an env var) avoids
+// depending on shell env-var ordering: this module builds its singleton
+// config synchronously at import time, before any code in an importing
+// entrypoint file gets a chance to run.
+const entrypointPath = process.argv[1] || '';
+const isApiOnlyEntrypoint = (
+  path.basename(path.dirname(entrypointPath)) === 'api'
+  && path.basename(entrypointPath) === 'main.js'
+);
+
 const envSchema = z.object({
   NODE_ENV: z
     .preprocess((value) => normalizeNodeEnv(value), z.enum(['dev', 'test', 'staging', 'prod']))
     .default('dev'),
-  DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN est requis'),
-  ADMIN_ROLE_ID: z.string().min(1, 'ADMIN_ROLE_ID est requis'),
+  DISCORD_TOKEN: isApiOnlyEntrypoint
+    ? optionalStringSchema()
+    : z.string().min(1, 'DISCORD_TOKEN est requis'),
+  ADMIN_ROLE_ID: isApiOnlyEntrypoint
+    ? optionalStringSchema()
+    : z.string().min(1, 'ADMIN_ROLE_ID est requis'),
   PLAYLIST_CHANNEL_ID: z.string().min(1, 'PLAYLIST_CHANNEL_ID est requis'),
   BOT_ROLE_NAME: z.string().default('soundSHINE'),
   DEV_GUILD_ID: optionalStringSchema(),
