@@ -283,6 +283,14 @@ export default (gateway) => {
         );
         // Continue quand même pour tester le stage channel
       }
+
+      const stageResult = await gateway.updateStageTopic(botConfig.VOICE_CHANNEL_ID, normalizedTopic);
+      if (stageResult.updated) {
+        stageTopic = true;
+      } else {
+        logger.error(`Erreur lors de la mise à jour du stage: ${stageResult.error}`);
+      }
+
 logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
 logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
       if (social === true) {
@@ -290,12 +298,13 @@ logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
       }
 
       return res.status(200).json({
-        status: 'OK',
+        status: playlistSent && stageTopic ? 'OK' : 'PARTIAL',
         message: 'Playlist mise à jour avec succès.',
         playlist: normalizedPlaylist,
         topic: normalizedTopic,
         details: {
           playlistSent,
+          stageTopic,
         }
       });
     } catch (err) {
@@ -310,4 +319,3 @@ logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
 
   return router;
 };
-

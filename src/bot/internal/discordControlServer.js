@@ -71,6 +71,22 @@ export function createDiscordControlServer (client, logger, config) {
     }
   });
 
+  app.post('/internal/v1/discord/update-stage-topic', async (req, res) => {
+    const { channelId, topic } = req.body || {};
+
+    if (!channelId || typeof channelId !== 'string' || !topic || typeof topic !== 'string') {
+      return res.status(400).json({ error: 'channelId and topic are required.' });
+    }
+
+    try {
+      const result = await gateway.updateStageTopic(channelId, topic);
+      res.json(result);
+    } catch (err) {
+      logger.error(`Erreur control server (update-stage-topic): ${err.message}`);
+      res.status(500).json({ error: 'Internal control server error.' });
+    }
+  });
+
   return {
     app,
 

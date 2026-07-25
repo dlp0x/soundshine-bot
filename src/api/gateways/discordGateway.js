@@ -18,6 +18,8 @@
  * @property {() => Promise<string|null>} getBotTag
  * @property {(channelId: string, payload: object) =>
  *   Promise<{delivered: boolean, reason?: string, error?: string}>} sendChannelMessage
+ * @property {(channelId: string, topic: string) =>
+ *   Promise<{updated: boolean, reason?: string, error?: string}>} updateStageTopic
  */
 
 /**
@@ -49,6 +51,32 @@ export function createDiscordGateway (client) {
         return { delivered: true };
       } catch (err) {
         return { delivered: false, reason: 'send_failed', error: err.message };
+      }
+    },
+
+    async updateStageTopic (channelId, topic) {
+      let channel;
+
+      try {
+        channel = await client?.channels?.fetch?.(channelId);
+      } catch (err) {
+        return { updated: false, reason: 'fetch_failed', error: err.message };
+      }
+
+      if (!channel?.createStageInstance) {
+        return { updated: false, reason: 'invalid_channel', error: 'Canal Stage invalide.' };
+      }
+
+      try {
+        if (channel.stageInstance?.setTopic) {
+          await channel.stageInstance.setTopic(topic);
+        } else {
+          await channel.createStageInstance({ topic });
+        }
+
+        return { updated: true };
+      } catch (err) {
+        return { updated: false, reason: 'update_failed', error: err.message };
       }
     }
   };

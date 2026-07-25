@@ -59,6 +59,27 @@ export function createHttpDiscordGateway ({ baseUrl, secret, timeoutMs = DEFAULT
 
         return { delivered: false, reason, error: describeAxiosError(err) };
       }
+    },
+
+    async updateStageTopic (channelId, topic) {
+      try {
+        const { data } = await client.post('/internal/v1/discord/update-stage-topic', {
+          channelId,
+          topic
+        });
+
+        if (typeof data?.updated !== 'boolean') {
+          return { updated: false, reason: 'malformed_response', error: 'Unexpected control server response.' };
+        }
+
+        return data;
+      } catch (err) {
+        const reason = err.response ? 'control_server_error' : 'gateway_unreachable';
+
+        logger?.error?.(`⚠️ [gateway] updateStageTopic via HTTP a échoué: ${describeAxiosError(err)}`);
+
+        return { updated: false, reason, error: describeAxiosError(err) };
+      }
     }
   };
 }

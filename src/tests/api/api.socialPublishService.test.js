@@ -65,7 +65,7 @@ describe("socialPublishService", () => {
   describe("buildSocialCaption", () => {
     it("builds a simple caption from the topic and playlist", () => {
       expect(buildSocialCaption("Lofi", "Chill Vibes")).toBe(
-        "🎶 Lofi is live now on soundSHINE! Playlist: Chill Vibes"
+        "🎶 Chill Vibes is live now on soundSHINE!"
       );
     });
   });
@@ -83,7 +83,7 @@ describe("socialPublishService", () => {
 
       expect(mockPublishToBuffer).toHaveBeenCalledTimes(1);
       expect(mockPublishToBuffer).toHaveBeenCalledWith({
-        text: "🎶 Lofi is live now on soundSHINE! Playlist: Test Playlist",
+        text: "🎶 Test Playlist is live now on soundSHINE!",
         mediaUrl: SUCCESSFUL_STORAGE.publicUrl,
       });
       // Never Buffer the temporary Templated URL or anything else.

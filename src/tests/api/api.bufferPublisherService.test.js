@@ -30,8 +30,11 @@ describe("bufferPublisherService", () => {
   it("publishes immediately and returns normalized metadata on success", async () => {
     axios.post.mockResolvedValue({
       data: {
-        success: true,
-        updates: [{ id: "update-123", status: "sent" }],
+        data: {
+          createPost: {
+            post: { id: "update-123", status: "sent" },
+          },
+        },
       },
     });
 
@@ -42,13 +45,14 @@ describe("bufferPublisherService", () => {
 
     expect(axios.post).toHaveBeenCalledTimes(1);
     const [url, body, options] = axios.post.mock.calls[0];
-    expect(url).toBe("https://api.bufferapp.com/1/updates/create.json");
-    expect(body.get("text")).toBe("🎶 Lofi is live now on soundSHINE! Playlist: Chill Vibes");
-    expect(body.get("profile_ids[]")).toBe("test-profile-id");
-    expect(body.get("media[photo]")).toBe(
+    expect(url).toBe("https://api.buffer.com");
+    expect(body.variables.input).toEqual(expect.objectContaining({
+      channelId: "test-profile-id",
+      text: "🎶 Lofi is live now on soundSHINE! Playlist: Chill Vibes",
+    }));
+    expect(body.variables.input.assets[0].image.url).toBe(
       "https://media.soundshineradio.com/social/2026/07/06/abc.jpg"
     );
-    expect(body.get("now")).toBe("true");
     expect(options.headers.Authorization).toBe("Bearer test-buffer-token");
 
     expect(result).toEqual({ id: "update-123", status: "sent" });
@@ -74,7 +78,7 @@ describe("bufferPublisherService", () => {
   });
 
   it("throws on a malformed/unsuccessful response", async () => {
-    axios.post.mockResolvedValue({ data: { success: false, message: "Profile not found" } });
+    axios.post.mockResolvedValue({ data: { data: { createPost: { message: "Profile not found" } } } });
 
     await expect(
       publishToBuffer({ text: "caption", mediaUrl: "https://media.soundshineradio.com/x.jpg" })
