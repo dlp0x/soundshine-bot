@@ -50,7 +50,7 @@
     "cors": "^2.8.5",
     "discord.js": "^14.26.4",
     "dotenv": "^17.2.1",
-    "eslint": "^9.32.0",
+    "eslint": "^10.8.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.1",
     "fast-glob": "^3.3.3",
@@ -74,11 +74,14 @@
     "supertest": "^7.1.4",
     "vitest": ">=4.1.0"
   },
-
   "scripts": {
     "start:dev": "dotenv -e .env.dev -- nodemon  --trace-warnings src/index.js",
     "start:prod": "dotenv -e .env.prod -- node src/index.js",
     "start:update": "git fetch && dotenv -e .env.prod -- node src/index.js",
+    "start:bot:dev": "dotenv -e .env.dev -- nodemon --trace-warnings src/bot/main.js",
+    "start:bot:prod": "dotenv -e .env.prod -- node src/bot/main.js",
+    "start:api:dev": "dotenv -e .env.dev -- nodemon --trace-warnings src/api/main.js",
+    "start:api:prod": "dotenv -e .env.prod -- node src/api/main.js",
     "deploy:dev": "dotenv -e .env.dev -- node scripts/bot/deploy-commands.js --dev",
     "clear:dev": "dotenv -e .env.dev -- node scripts/bot/deploy-commands.js --dev --clear",
     "clear:global": "dotenv -e .env.prod -- node scripts/bot/deploy-commands.js --global --clear",

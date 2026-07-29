@@ -4,15 +4,15 @@
 
 import { Router } from 'express';
 
-export default (client, logger) => {
+export default (gateway, logger) => {
   const router = Router();
 
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     try {
       const healthData = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        bot: client.user?.tag || 'Unknown',
+        bot: (await gateway.getBotTag()) || 'Unknown',
         uptime: process.uptime(),
         memory: process.memoryUsage()
       };

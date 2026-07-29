@@ -2,7 +2,7 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import playlistUpdateRouter from '#api/routes/playlist-update.js';
 import {
-  createDiscordClientForPlaylist,
+  createDiscordGatewayForPlaylist,
   createJsonApp,
   createStageChannel,
   createTextChannel
@@ -10,7 +10,7 @@ import {
 
 describe('playlist update API route', () => {
   it('refuse les appels sans token API valide', async () => {
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist()));
+    const app = createJsonApp(playlistUpdateRouter(createDiscordGatewayForPlaylist()));
 
     const response = await request(app)
       .post('/')
@@ -22,7 +22,7 @@ describe('playlist update API route', () => {
 
   it('valide le body avant de modifier Discord', async () => {
     const playlistSend = vi.fn();
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist({
+    const app = createJsonApp(playlistUpdateRouter(createDiscordGatewayForPlaylist({
       playlistChannel: createTextChannel({ send: playlistSend }),
       stageChannel: createStageChannel()
     })));
@@ -39,7 +39,7 @@ describe('playlist update API route', () => {
   it('envoie la playlist et cree une instance de stage', async () => {
     const playlistSend = vi.fn(async () => ({}));
     const createStageInstance = vi.fn(async () => ({}));
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist({
+    const app = createJsonApp(playlistUpdateRouter(createDiscordGatewayForPlaylist({
       playlistChannel: createTextChannel({ send: playlistSend }),
       stageChannel: createStageChannel({ createStageInstance })
     })));
@@ -60,7 +60,7 @@ describe('playlist update API route', () => {
   });
 
   it('retourne PARTIAL si la playlist part mais que le stage echoue', async () => {
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist({
+    const app = createJsonApp(playlistUpdateRouter(createDiscordGatewayForPlaylist({
       playlistChannel: createTextChannel({ send: vi.fn(async () => ({})) }),
       stageChannel: createStageChannel({
         createStageInstance: vi.fn(async () => {

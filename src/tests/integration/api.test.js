@@ -54,6 +54,7 @@ vi.mock("#api/services/socialPublishService.js", () => ({
 
 import healthRoute from "#api/routes/health.js";
 import playlistUpdateRoute from "#api/routes/playlist-update.js";
+import { createDiscordGateway } from "#api/gateways/discordGateway.js";
 
 let app;
 let server;
@@ -146,8 +147,9 @@ describe("API Integration Tests", () => {
     });
 
     // Setup routes
-    app.use("/health", healthRoute(mockClient, mockLogger));
-    app.use("/playlist-update", playlistUpdateRoute(mockClient, mockLogger));
+    const gateway = createDiscordGateway(mockClient);
+    app.use("/health", healthRoute(gateway, mockLogger));
+    app.use("/playlist-update", playlistUpdateRoute(gateway, mockLogger));
   });
 
   beforeAll(async () => {

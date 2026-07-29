@@ -1,24 +1,30 @@
 // ========================================
-// index.js - Point d'entree principal
+// bot/main.js - Point d'entree "bot seul"
 // ========================================
+//
+// Phase 3 of the API extraction (see docs/api-extraction-plan.md).
+//
+// This process owns the Discord client and the internal control server
+// only — it never starts the public Express API. Run it alongside
+// `src/api/main.js` (with API_GATEWAY_MODE=http) to run the bot and the
+// API as two separate processes.
+//
+// The monolithic `src/index.js` entrypoint still exists and is untouched;
+// this is an additive alternative, not a replacement.
 
 import 'dotenv/config';
-import fs from 'fs';
-import WebServer from '#api/index.js';
-import { createDiscordControlServer } from './bot/internal/discordControlServer.js';
-import { startBot, stopBot } from './bot/startup.js';
-import config from './bot/config.js';
+import { createDiscordControlServer } from './internal/discordControlServer.js';
+import { startBot, stopBot } from './startup.js';
+import config from './config.js';
 import logger from '#shared/logging/logger.js';
-import logMemory from './bot/tasks/logMemory.js';
+import logMemory from './tasks/logMemory.js';
+import { logStartupBanner } from '#core/bootstrap/appInfo.js';
 import { registerProcessHandlers } from '#core/lifecycle.js';
 import appState from '#core/services/AppState.js';
 import { db as database } from '#shared/database/database.js';
-import { retryDiscord, retry } from '#core/services/retry.js';
-
-const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+import { retryDiscord } from '#core/services/retry.js';
 
 let botClient = null;
-let apiServer = null;
 let controlServer = null;
 let isShuttingDown = false;
 
@@ -32,11 +38,6 @@ async function gracefulShutdown (signal = 'UNKNOWN') {
   logger.warn(`Fermeture demandee (signal: ${signal})`);
 
   try {
-    if (apiServer) {
-      await apiServer.stop();
-      appState.setApiRunning(false);
-    }
-
     if (controlServer) {
       await controlServer.stop();
     }
@@ -60,10 +61,15 @@ async function gracefulShutdown (signal = 'UNKNOWN') {
 
 async function startApplication () {
   try {
-    console.log('');
-    logger.info(`Version: ${pkg.version}`);
-    logger.info(`Node.js: ${process.version}`);
-    logger.info(`Environnement: ${config.NODE_ENV}`);
+    logStartupBanner(logger, config, 'bot');
+
+    if (!config.hasInternalControlSecret()) {
+      throw new Error(
+        'INTERNAL_CONTROL_SECRET doit etre defini pour demarrer src/bot/main.js '
+        + '(le processus API en a besoin pour parler au bot). '
+        + 'Sinon, utilisez le point d\'entree monolithique src/index.js.'
+      );
+    }
 
     botClient = await retryDiscord(
       async () => {
@@ -78,40 +84,19 @@ async function startApplication () {
       }
     );
 
-    if (config.API_GATEWAY_MODE === 'http') {
-      controlServer = createDiscordControlServer(botClient, logger, config);
-      controlServer.start(config.INTERNAL_CONTROL_PORT);
-      logger.api(`Gateway API en mode 'http' (contrôle interne sur le port ${config.INTERNAL_CONTROL_PORT})`);
-    }
+    controlServer = createDiscordControlServer(botClient, logger, config);
+    controlServer.start(config.INTERNAL_CONTROL_PORT);
 
-    apiServer = new WebServer(botClient, logger);
-    logger.banner('Initialisation du serveur API...');
-
-    await retry(
-      async () => {
-        await apiServer.start(config.API_PORT);
-        appState.setApiRunning(true, config.API_PORT);
-      },
-      {
-        onRetry: (error, attempt) =>
-          logger.warn(`Retry API ${attempt}: ${error.message}`)
-      }
-    );
-
-    logger.success(`API en ligne sur le port ${config.API_PORT}`);
+    logger.success(`Bot en ligne. Serveur de controle interne sur le port ${config.INTERNAL_CONTROL_PORT}`);
     registerProcessHandlers({ gracefulShutdown });
 
-    logger.api(
-      'Routes API disponibles : /v1/health, /v1/playlist-update'
-    );
     logMemory.execute();
-    logger.banner('Bot pret. Logging en cours...');
+    logger.banner('Bot pret (mode processus separe). Logging en cours...');
   } catch (error) {
     logger.error('Erreur critique au demarrage:', error);
 
     try {
       if (botClient) await stopBot();
-      if (apiServer) await apiServer.stop();
       if (controlServer) await controlServer.stop();
       await database.disconnect();
     } catch (cleanupError) {
