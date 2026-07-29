@@ -50,7 +50,7 @@
     "cors": "^2.8.5",
     "discord.js": "^14.26.4",
     "dotenv": "^17.2.1",
-    "eslint": "^9.32.0",
+    "eslint": "^10.8.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.1",
     "fast-glob": "^3.3.3",
@@ -74,7 +74,6 @@
     "supertest": "^7.1.4",
     "vitest": ">=4.1.0"
   },
-
   "scripts": {
     "start:dev": "dotenv -e .env.dev -- nodemon  --trace-warnings src/index.js",
     "start:prod": "dotenv -e .env.prod -- node src/index.js",
