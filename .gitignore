@@ -1,7 +1,8 @@
 # ========================================
 # .gitignore - soundSHINE Bot
 # ========================================
-
+*.patch
+PR-sprint1-simplify-social-publishing.md
 # ========================================
 # Logs et fichiers de diagnostic
 # ========================================
