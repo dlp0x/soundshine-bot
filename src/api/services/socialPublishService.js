@@ -1,30 +1,36 @@
 // api/services/socialPublishService.js
 //
 // Social orchestration entry point for playlist updates:
-// 1. Requests a rendered "programming announcement" visual from Templated.
-// 2. Downloads and persists that render locally, producing a stable
-//    public HTTPS URL under media.soundshineradio.com.
-// 3. Publishes that stable URL + a short caption to Buffer, immediately.
+// 1. Resolves the predefined local visual for the on-air program (see
+//    showMediaResolver.js). No image is generated dynamically.
+// 2. Builds a caption (hook + listening URL + hashtags).
+// 3. Publishes the caption, and the local visual when one was found, to
+//    Buffer.
+// 4. Notifies the editorial team on Discord: publication success, failure,
+//    or a missing media asset — each independent of the others.
 //
-// Each stage is an independent, isolated failure point: a failure at any
-// stage is caught and logged here and never propagates up to affect the
-// Discord update or the API response. Only the stable local media URL is
-// ever handed to Buffer — never a Discord CDN URL or the temporary
-// Templated render URL.
+// Sprint 1: Templated.io has been removed from this pipeline. Images are
+// no longer rendered on demand; each program has a static asset under
+// media/shows/<slug>.<ext>. A missing asset never blocks publication — it
+// only triggers a dedicated Discord notification so the editorial team can
+// add the missing artwork.
+//
+// Each stage remains an independent, isolated failure point: nothing here
+// ever propagates up to affect the Discord playlist/stage update or the
+// API response.
 
 import logger from '#shared/logging/logger.js';
-import alertManager from '#core/services/AlertManager.js';
-import { requestRender } from '#api/services/templatedClient.js';
-import { storeRenderedImage } from '#api/services/mediaStorageService.js';
+import botConfig from '#bot/config.js';
 import { publishToBuffer } from '#api/services/bufferPublisherService.js';
-
-// Layer names on the configured Templated template that receive the
-// programming title ("Lofi — 18h") and the playlist name. Adjust these to
-// match the actual template's layer names in the Templated dashboard.
-const TITLE_LAYER = 'title';
-const SUBTITLE_LAYER = 'subtitle';
+import { resolveShowMedia } from '#api/services/showMediaResolver.js';
+import {
+  notifyPublishSuccess,
+  notifyPublishFailure,
+  notifyMissingMedia
+} from '#api/services/discordSocialNotifier.js';
 
 const ANNOUNCEMENT_TIMEZONE = 'America/Toronto';
+const DEFAULT_STREAM_URL = 'https://soundshineradio.com';
 
 /**
  * Builds the programming announcement text, e.g. "Lofi — 18h", from the
@@ -42,117 +48,108 @@ export function formatProgramAnnouncement (topic, now = new Date()) {
   }).format(now).replace(/\D/g, '');
 
   return `${topic} — ${hour}h`;
-  
 }
 
 /**
- * Small, isolated helper: builds the Buffer post caption from the same
- * playlist-update fields, independently of the visual's own text layers.
+ * Strips a program name down to a bare hashtag token, e.g.
+ * "Morning Show" -> "MorningShow".
+ * @param {string} text
+ */
+function slugifyHashtag (text) {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '');
+}
+
+/**
+ * Builds the Buffer post caption from the playlist-update fields: a hook
+ * line, the listening URL, and a small set of hashtags. Independent of
+ * whether a media asset was found for the program.
  *
  * @param {string} topic
  * @param {string} playlist
  */
 export function buildSocialCaption (topic, playlist) {
-  logger.info(`🎨 Templated render requested: ${topic} / ${playlist}`);
-  return `🎶 ${playlist} is live now on soundSHINE!`;
+  const streamUrl = botConfig.STREAM_URL || DEFAULT_STREAM_URL;
+  const hashtags = ['#soundSHINE', '#radio', slugifyHashtag(topic) && `#${slugifyHashtag(topic)}`]
+    .filter(Boolean)
+    .join(' ');
+
+  return `🎶 ${playlist} is live now on soundSHINE!\n🔗 ${streamUrl}\n\n${hashtags}`;
 }
 
 /**
  * Social orchestration entry point for a playlist update. See module
- * header for the three stages. Every stage is best-effort: failures are
- * logged and returned as a normalized `{ status: 'failed', stage, ... }`
- * result rather than thrown.
+ * header for the stages. Media resolution and Buffer publication are
+ * best-effort: failures are logged, reported via a Discord notification,
+ * and returned as a normalized result rather than thrown.
  *
- * @param {{ playlist: string, topic: string }} payload
+ * @param {{
+ *   playlist: string,
+ *   topic: string,
+ *   gateway?: import('#api/gateways/discordGateway.js').DiscordGateway
+ * }} payload
  * @returns {Promise<
- *   { status: 'published', id: string, template: string, renderStatus: string,
- *     templatedUrl: string, localPath: string, publicUrl: string,
+ *   { status: 'published', program: string, playlist: string, mediaUrl: string|null,
  *     bufferUpdateId: string, bufferStatus: string } |
- *   { status: 'failed', stage: 'render' | 'storage' | 'publish', error: string,
- *     id?: string, templatedUrl?: string, localPath?: string, publicUrl?: string }
+ *   { status: 'failed', stage: 'publish', error: string, program: string,
+ *     playlist: string, mediaUrl: string|null }
  * >}
  */
+export async function publishPlaylistUpdate ({ playlist, topic, gateway }) {
+  const media = resolveShowMedia(topic);
 
-export async function publishPlaylistUpdate ({ playlist, topic }) {
-  const announcement = formatProgramAnnouncement(topic);
-
-  let render;
-  try {
-    render = await requestRender({
-      [TITLE_LAYER]: { text: announcement },
-      [SUBTITLE_LAYER]: { text: playlist }
-    });
-  } catch (err) {
-    await logger.error(
-      `⚠️ [social] Templated render failed for "${announcement}" (playlist="${playlist}"): ${err.message}`
+  if (!media.found) {
+    logger.warn(
+      `⚠️ [social] Aucun visuel local trouvé pour le programme "${topic}" (slug attendu: "${media.slug}").`
     );
 
-    return { status: 'failed', stage: 'render', error: err.message };
-  }
-
-  let stored;
-  try {
-    stored = await storeRenderedImage(render.url);
-
-    await logger.info(
-      `📣 [social] Stored render for "${announcement}" (playlist="${playlist}") → ${stored.publicUrl}`
-    );
-  } catch (err) {
-    await logger.error(
-      `⚠️ [social] Storing render failed for "${announcement}" (playlist="${playlist}"): ${err.message}`
-    );
-
-    return {
-      status: 'failed',
-      stage: 'storage',
-      error: err.message,
-      id: render.id,
-      templatedUrl: render.url
-    };
+    await notifyMissingMedia(gateway, { program: topic, slug: media.slug });
   }
 
   const caption = buildSocialCaption(topic, playlist);
 
   try {
-    const buffer = await publishToBuffer({ text: caption, mediaUrl: stored.publicUrl });
+    const buffer = await publishToBuffer({
+      text: caption,
+      mediaUrl: media.found ? media.publicUrl : undefined
+    });
 
     await logger.info(
-      `✅ [social] Published to Buffer (update ${buffer.id}) → ${stored.publicUrl}`
+      `✅ [social] Publié sur Buffer (update ${buffer.id}) — programme "${topic}"` +
+      (media.found ? ` avec visuel ${media.publicUrl}` : ' sans visuel')
     );
+
+    await notifyPublishSuccess(gateway, {
+      program: topic,
+      playlist,
+      bufferUpdateId: buffer.id,
+      mediaUrl: media.found ? media.publicUrl : null
+    });
 
     return {
       status: 'published',
-      id: render.id,
-      template: render.template,
-      renderStatus: render.status,
-      templatedUrl: render.url,
-      localPath: stored.localPath,
-      publicUrl: stored.publicUrl,
+      program: topic,
+      playlist,
+      mediaUrl: media.found ? media.publicUrl : null,
       bufferUpdateId: buffer.id,
       bufferStatus: buffer.status
     };
   } catch (err) {
-    // Concise, actionable log: what failed, and the URL an admin could
-    // publish manually in the meantime.
     await logger.error(
-      `⚠️ [social] Buffer publication failed for "${announcement}" (media: ${stored.publicUrl}): ${err.message}`
+      `⚠️ [social] Publication Buffer échouée pour "${topic}" (playlist="${playlist}"): ${err.message}`
     );
 
-    alertManager.createAlert(
-      'social_buffer_publish_failed',
-      'warning',
-      `Publication Buffer échouée pour "${announcement}"`,
-      { playlist, topic, mediaUrl: stored.publicUrl, error: err.message }
-    );
+    await notifyPublishFailure(gateway, { program: topic, playlist, error: err.message });
 
     return {
       status: 'failed',
       stage: 'publish',
       error: err.message,
-      id: render.id,
-      templatedUrl: render.url,
-      localPath: stored.localPath,
-      publicUrl: stored.publicUrl
+      program: topic,
+      playlist,
+      mediaUrl: media.found ? media.publicUrl : null
     };
   }
 }

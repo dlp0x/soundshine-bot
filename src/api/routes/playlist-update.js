@@ -23,12 +23,12 @@ const playlistSchema = z.object({
 /**
  * Fires the social orchestration entry point without letting failures
  * affect the Discord update flow or the API response. The entry point
- * itself already catches Templated-specific failures and returns a
+ * itself already catches Buffer/media-resolution failures and returns a
  * normalized result, so this is a defense-in-depth backstop.
  */
-const triggerSocialPlaceholder = async ({ playlist, topic }) => {
+const triggerSocialPublish = async ({ playlist, topic }, gateway) => {
   try {
-    await publishPlaylistUpdate({ playlist, topic });
+    await publishPlaylistUpdate({ playlist, topic, gateway });
   } catch (socialErr) {
     logger.error(
       `⚠️ [social] Social orchestration failed (ignored, Discord update unaffected): ${socialErr.message}`
@@ -294,7 +294,7 @@ export default (gateway) => {
 logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
 logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
       if (social === true) {
-        await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
+        await triggerSocialPublish({ playlist: normalizedPlaylist, topic: normalizedTopic }, gateway);
       }
 
       return res.status(200).json({
