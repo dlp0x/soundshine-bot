@@ -5,9 +5,6 @@ import corsMiddleware from './middlewares/cors.js';
 import helmetMiddleware from './middlewares/helmet.js';
 import loggingMiddleware from '#shared/logging/api.js';
 import loadRoutes from './routes.js';
-import { createDiscordGateway } from './gateways/discordGateway.js';
-import { createHttpDiscordGateway } from './gateways/httpDiscordGateway.js';
-import botConfig from '#bot/config.js';
 import monitor from '#core/monitor.js';
 import {
   validateInput,
@@ -24,26 +21,9 @@ class WebServer {
   constructor (client, logger) {
     this.client = client;
     this.logger = logger;
-    this.gateway = this.buildGateway(client, logger);
     this.app = express();
     this.app.set('trust proxy', 1);
     this.server = null;
-  }
-
-  // Chooses the Discord gateway implementation. Defaults to the
-  // in-process wrapper (unchanged behavior). Set API_GATEWAY_MODE=http to
-  // route through the internal control server instead — see
-  // docs/api-extraction-plan.md.
-  buildGateway (client, logger) {
-    if (botConfig.api?.gatewayMode === 'http') {
-      return createHttpDiscordGateway({
-        baseUrl: botConfig.INTERNAL_CONTROL_URL,
-        secret: botConfig.INTERNAL_CONTROL_SECRET,
-        logger
-      });
-    }
-
-    return createDiscordGateway(client);
   }
 
   setupMiddleware () {
@@ -84,7 +64,7 @@ class WebServer {
 
   setupRoutes () {
     try {
-      loadRoutes(this.app, this.gateway, this.logger);
+      loadRoutes(this.app, this.client, this.logger);
       this.logger.api('Routes chargées');
     } catch (error) {
       monitor.handleCriticalError(error, 'ROUTES_SETUP');

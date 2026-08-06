@@ -3,7 +3,7 @@ import healthRoutes from './routes/health.js';
 import playlistRoutes from './routes/playlist-update.js';
 
 
-export default function loadRoutes (app, gateway, logger) {
+export default function loadRoutes (app, client, logger) {
   app.get('/v1', (req, res) => {
     res.json({
       name: 'soundSHINE Bot API',
@@ -11,15 +11,15 @@ export default function loadRoutes (app, gateway, logger) {
       status: 'online',
       timestamp: new Date().toISOString(),
       endpoints: {
-        health: '/v1/health',
-        playlist: '/v1/playlist-update',
+        health: '/health',
+        playlist: '/playlist-update',
         
       }
     });
   });
 
-  app.use('/v1/health', healthRoutes(gateway, logger));
-  app.use('/v1/playlist-update', playlistRoutes(gateway, logger));
+  app.use('/health', healthRoutes(client, logger));
+  app.use('/playlist-update', playlistRoutes(client, logger));
 
   // 404
   app.use((req, res) => {

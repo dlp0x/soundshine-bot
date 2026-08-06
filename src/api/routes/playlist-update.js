@@ -3,11 +3,11 @@ import botConfig from '#bot/config.js';
 import { z } from 'zod';
 import logger from '#shared/logging/logger.js';
 
-const { API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
+const { VOICE_CHANNEL_ID, API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
 
 const playlistSchema = z.object({
   playlist: z.string().min(1, 'Playlist is required'),
-  topic: z.string().min(1, 'Topic is required'),
+  topic: z.string().min(1, 'Topic is required')
 });
 
 // Fonction pour essayer de récupérer les caractères corrompus
@@ -18,7 +18,7 @@ const tryFixEncoding = async (text) => {
 
   // Si le texte contient des caractères de remplacement, essayer de le récupérer
   if (text.includes('')) {
-    logger.info('🔧 Tentative de récupération d\'encodage pour:', text);
+    await logger.info('🔧 Tentative de récupération d\'encodage pour:', text);
 
     // Essayer différents encodages
     const encodings = ['latin1', 'iso-8859-1', 'cp1252', 'utf8'];
@@ -37,7 +37,7 @@ const tryFixEncoding = async (text) => {
           return decoded;
         }
       } catch {
-        logger.error(`❌ Échec avec ${encoding}`);
+        await logger.error(`❌ Échec avec ${encoding}`);
       }
     }
   }
@@ -144,7 +144,7 @@ const debugEncoding = async (text, label) => {
   await logger.debug('================================');
 };
 
-export default (gateway) => {
+export default (client) => {
   const router = express.Router();
 
   // Configuration pour s'assurer que les données JSON sont correctement décodées
@@ -160,14 +160,14 @@ export default (gateway) => {
 
   router.post('/', async (req, res) => {
     try {
-      logger.info('POST /v1/playlist-update');
+      await logger.info('POST /v1/send-playlist');
 
       // Debug du raw body pour diagnostiquer l'encodage
       if (req.rawBody) {
-        logger.info('🔍 DEBUG RAW BODY:');
-        logger.info(`Raw body hex: ${req.rawBody.toString('hex')}`);
-        logger.info(`Raw body utf8: ${req.rawBody.toString('utf8')}`);
-        logger.info(`Raw body length: ${req.rawBody.length}`);
+        await logger.info('🔍 DEBUG RAW BODY:');
+        await logger.info(`Raw body hex: ${req.rawBody.toString('hex')}`);
+        await logger.info(`Raw body utf8: ${req.rawBody.toString('utf8')}`);
+        await logger.info(`Raw body length: ${req.rawBody.length}`);
       }
 
       // Vérification du token dans le header
@@ -184,7 +184,7 @@ export default (gateway) => {
           details: parseResult.error.errors
         });
       }
-      const { playlist, topic, social } = parseResult.data;
+      const { playlist, topic } = parseResult.data;
 
       // Normalisation des textes pour gérer les accents
       const normalizedPlaylist = await ensureAccentEncoding(playlist);
@@ -207,18 +207,28 @@ export default (gateway) => {
         `Topic après décodage Unicode: "${decodeUnicodeEscapes(topic)}"`
       );
 
-      logger.info(`Topic original: ${topic}`);
-      logger.info(`Topic normalisé: ${normalizedTopic}`);
-      logger.info(`Playlist original: ${playlist}`);
-      logger.info(`Playlist normalisé: ${normalizedPlaylist}`);
+      await logger.info(`Topic original: ${topic}`);
+      await logger.info(`Topic normalisé: ${normalizedTopic}`);
+      await logger.info(`Playlist original: ${playlist}`);
+      await logger.info(`Playlist normalisé: ${normalizedPlaylist}`);
 
       let playlistSent = false;
       let stageTopic = false;
 
-      logger.info('=== DÉBUT DU TRAITEMENT ===');
+      await logger.info('=== DÉBUT DU TRAITEMENT ===');
 
       // 1. Envoi de l'embed de playlist
-      logger.info('🔄 Étape 1: Envoi de l\'embed via la gateway Discord...');
+      await logger.info('🔄 Étape 1: Récupération du canal playlist...');
+      const playlistChannel = client.channels.cache.get(PLAYLIST_CHANNEL_ID);
+
+      if (!playlistChannel?.isTextBased()) {
+        await logger.error('❌ Canal playlist introuvable ou invalide');
+        return res
+          .status(500)
+          .json({ error: 'Canal Discord invalide pour la playlist.' });
+      }
+
+      await logger.info(`Canal playlist trouvé: ${playlistChannel.name}`);
 
       const description = `**${normalizedPlaylist}** est maintenant en ondes sur soundSHINE! 
       \nVous pouvez l'écouter en direct sur le https://soundshineradio.com`;
@@ -234,57 +244,115 @@ export default (gateway) => {
       };
 
       // Vérification finale de l'encodage avant envoi
-      logger.info('🔍 Vérification finale de l\'encodage:');
-      logger.info(`Description embed: "${description}"`);
-      logger.info(
+      await logger.info('🔍 Vérification finale de l\'encodage:');
+      await logger.info(`Description embed: "${description}"`);
+      await logger.info(
         `Description bytes: ${Buffer.from(description, 'utf8').toString('hex')}`
       );
 
-      logger.info('🔄 Étape 2: Tentative d\'envoi de l\'embed...');
-      const sendResult = await gateway.sendChannelMessage(PLAYLIST_CHANNEL_ID, { embeds: [embed] });
-
-      if (sendResult.delivered) {
-        logger.info('Embed playlist envoyé avec succès');
+      await logger.info('🔄 Étape 2: Tentative d\'envoi de l\'embed...');
+      try {
+        await playlistChannel.send({ embeds: [embed] });
+        await logger.info('Embed playlist envoyé avec succès');
         playlistSent = true;
-      } else if (sendResult.reason === 'invalid_channel') {
-        logger.error('❌ Canal playlist introuvable ou invalide');
-        return res
-          .status(500)
-          .json({ error: 'Canal Discord invalide pour la playlist.' });
-      } else {
-        logger.error(
-          `❌ Erreur lors de l'envoi de l'embed: ${sendResult.error}`
+      } catch (embedErr) {
+        await logger.error(
+          `❌ Erreur lors de l'envoi de l'embed: ${embedErr.message}`
         );
+        await logger.error(`Code d'erreur embed: ${embedErr.code}`);
         // Continue quand même pour tester le stage channel
       }
 
-      const stageResult = await gateway.updateStageTopic(botConfig.VOICE_CHANNEL_ID, normalizedTopic);
-      if (stageResult.updated) {
-        stageTopic = true;
-      } else {
-        logger.error(`Erreur lors de la mise à jour du stage: ${stageResult.error}`);
+      // 2. Mise à jour du stage channel
+      await logger.info('🔄 Étape 3: Récupération du stage channel...');
+      try {
+        const stageChannel = await client.channels.fetch(VOICE_CHANNEL_ID);
+
+        if (!stageChannel || stageChannel.type !== 13) {
+          await logger.error(
+            `❌ Stage channel invalide. Type: ${stageChannel?.type}, ID: ${VOICE_CHANNEL_ID}`
+          );
+          throw new Error('Canal Stage invalide');
+        }
+
+        await logger.info(`Stage channel trouvé: ${stageChannel.name}`);
+
+        await logger.info('🔄 Étape 4: Vérification de l\'instance de stage...');
+        const { stageInstance } = stageChannel;
+
+        if (!stageInstance) {
+          await logger.info(
+            '🔄 Étape 5a: Aucune instance active, création en cours...'
+          );
+          try {
+            await stageChannel.createStageInstance({ topic: normalizedTopic });
+            await logger.success(
+              `Instance de stage créée avec sujet: ${normalizedTopic}`
+            );
+            stageTopic = true;
+          } catch (createErr) {
+            await logger.error(
+              `❌ Erreur lors de la création: ${createErr.message}`
+            );
+            await logger.error(`Code d'erreur création: ${createErr.code}`);
+            throw createErr;
+          }
+        } else {
+          await logger.info(
+            '🔄 Étape 5b: Instance existante, modification du sujet...'
+          );
+          try {
+            await stageInstance.edit({ topic: normalizedTopic });
+            await logger.success(`Sujet modifié: ${normalizedTopic}`);
+            stageTopic = true;
+          } catch (editErr) {
+            await logger.error(
+              `❌ Erreur lors de la modification: ${editErr.message}`
+            );
+            await logger.error(`Code d'erreur modification: ${editErr.code}`);
+            throw editErr;
+          }
+        }
+      } catch (stageErr) {
+        await logger.error(
+          `❌ Erreur générale stage channel: ${stageErr.message}`
+        );
+        await logger.error(`Code d'erreur stage: ${stageErr.code}`);
+
+        // Si au moins l'embed a fonctionné, on peut continuer
+        if (playlistSent) {
+          await logger.info('⚠️ Embed envoyé mais stage channel échoué');
+          return res.status(200).json({
+            status: 'PARTIAL',
+            message: 'Playlist envoyée mais échec du stage channel.',
+            playlist: normalizedPlaylist,
+            topic: normalizedTopic,
+            details: {
+              playlistSent: true,
+              stageTopic: false,
+              error: stageErr.message
+            }
+          });
+        } else {
+          throw stageErr;
+        }
       }
 
-logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
-logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
-      if (social === true) {
-        await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
-      }
-
+      await logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
       return res.status(200).json({
-        status: playlistSent && stageTopic ? 'OK' : 'PARTIAL',
-        message: 'Playlist mise à jour avec succès.',
+        status: 'OK',
+        message: 'Playlist et stage mis à jour avec succès.',
         playlist: normalizedPlaylist,
         topic: normalizedTopic,
         details: {
           playlistSent,
-          stageTopic,
+          stageTopic
         }
       });
     } catch (err) {
-      logger.error(`ERREUR FATALE: ${err.message}`);
-      logger.error(`Code: ${err.code}`);
-      logger.error(`Stack: ${err.stack}`);
+      await logger.error(`ERREUR FATALE: ${err.message}`);
+      await logger.error(`Code: ${err.code}`);
+      await logger.error(`Stack: ${err.stack}`);
       return res
         .status(500)
         .json({ error: 'Erreur serveur lors du traitement.' });
@@ -293,3 +361,4 @@ logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
 
   return router;
 };
+

@@ -63,33 +63,6 @@ function optionalUrlSchema () {
   }, z.string().optional());
 }
 
-function stringWithDefault (defaultValue) {
-  return z.preprocess((value) => {
-    if (typeof value === 'undefined' || value === null || value === '') {
-      return defaultValue;
-    }
-
-    return String(value);
-  }, z.string()).default(defaultValue);
-}
-
-function urlWithDefault (defaultValue) {
-  return z.preprocess((value) => {
-    if (typeof value === 'undefined' || value === null || value === '') {
-      return defaultValue;
-    }
-
-    const stringValue = String(value);
-
-    try {
-      new URL(stringValue);
-      return stringValue;
-    } catch {
-      return defaultValue;
-    }
-  }, z.string()).default(defaultValue);
-}
-
 function numericStringWithDefault (defaultValue) {
   return z.preprocess((value) => {
     if (typeof value === 'undefined' || value === null || value === '') {
@@ -122,28 +95,12 @@ const envSpecificPath = path.join(__dirname, `../.env.${envFileEnv}`);
 loadEnvFile(baseEnvPath);
 loadEnvFile(envSpecificPath);
 
-// src/api/main.js (Phase 3 split entrypoint, see docs/api-extraction-plan.md)
-// runs without a Discord client at all — it only ever talks to Discord via
-// the HTTP gateway. Detecting it here (rather than via an env var) avoids
-// depending on shell env-var ordering: this module builds its singleton
-// config synchronously at import time, before any code in an importing
-// entrypoint file gets a chance to run.
-const entrypointPath = process.argv[1] || '';
-const isApiOnlyEntrypoint = (
-  path.basename(path.dirname(entrypointPath)) === 'api'
-  && path.basename(entrypointPath) === 'main.js'
-);
-
 const envSchema = z.object({
   NODE_ENV: z
     .preprocess((value) => normalizeNodeEnv(value), z.enum(['dev', 'test', 'staging', 'prod']))
     .default('dev'),
-  DISCORD_TOKEN: isApiOnlyEntrypoint
-    ? optionalStringSchema()
-    : z.string().min(1, 'DISCORD_TOKEN est requis'),
-  ADMIN_ROLE_ID: isApiOnlyEntrypoint
-    ? optionalStringSchema()
-    : z.string().min(1, 'ADMIN_ROLE_ID est requis'),
+  DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN est requis'),
+  ADMIN_ROLE_ID: z.string().min(1, 'ADMIN_ROLE_ID est requis'),
   PLAYLIST_CHANNEL_ID: z.string().min(1, 'PLAYLIST_CHANNEL_ID est requis'),
   BOT_ROLE_NAME: z.string().default('soundSHINE'),
   DEV_GUILD_ID: optionalStringSchema(),
@@ -157,18 +114,6 @@ const envSchema = z.object({
   RADIODJ_API_KEY: optionalStringSchema(),
   API_TOKEN: optionalStringSchema(),
   API_PORT: numericStringWithDefault('3000').default('3000'),
-  API_GATEWAY_MODE: z
-    .preprocess((value) => {
-      if (typeof value === 'undefined' || value === null || value === '') {
-        return 'inprocess';
-      }
-
-      return String(value).toLowerCase();
-    }, z.enum(['inprocess', 'http']))
-    .default('inprocess'),
-  INTERNAL_CONTROL_SECRET: optionalStringSchema(),
-  INTERNAL_CONTROL_PORT: numericStringWithDefault('3100').default('3100'),
-  INTERNAL_CONTROL_URL: urlWithDefault('http://127.0.0.1:3100'),
   LOG_LEVEL: z
     .preprocess((value) => {
       if (typeof value === 'undefined' || value === null || value === '') {
@@ -228,13 +173,9 @@ function buildConfig () {
     JSON_URL: env.JSON_URL,
     RADIODJ_API_URL: env.RADIODJ_API_URL,
     RADIODJ_API_KEY: env.RADIODJ_API_KEY,
-    
+
     API_TOKEN: env.API_TOKEN,
     API_PORT: env.API_PORT,
-    API_GATEWAY_MODE: env.API_GATEWAY_MODE,
-    INTERNAL_CONTROL_SECRET: env.INTERNAL_CONTROL_SECRET,
-    INTERNAL_CONTROL_PORT: env.INTERNAL_CONTROL_PORT,
-    INTERNAL_CONTROL_URL: env.INTERNAL_CONTROL_URL,
     LOG_LEVEL: env.LOG_LEVEL,
 
     REQ_ROLE_ID: env.REQ_ROLE_ID,
@@ -286,15 +227,11 @@ function buildConfig () {
     api: {
       port: Number(env.API_PORT),
       token: env.API_TOKEN,
-      gatewayMode: env.API_GATEWAY_MODE,
-      internalControlSecret: env.INTERNAL_CONTROL_SECRET,
-      internalControlPort: Number(env.INTERNAL_CONTROL_PORT),
-      internalControlUrl: env.INTERNAL_CONTROL_URL,
       unsplashKey: env.UNSPLASH_ACCESS_KEY,
       streamUrl: env.STREAM_URL,
       jsonUrl: env.JSON_URL,
       radioDjUrl: env.RADIODJ_API_URL,
-      radioDjKey: env.RADIODJ_API_KEY,
+      radioDjKey: env.RADIODJ_API_KEY
     },
 
     hasUnsplash () {
@@ -303,14 +240,6 @@ function buildConfig () {
 
     hasStreamService () {
       return !!(this.STREAM_URL && this.JSON_URL);
-    },
-
-    hasMediaStorage () {
-      return !!(this.SOCIAL_MEDIA_STORAGE_ROOT && this.SOCIAL_MEDIA_PUBLIC_BASE_URL);
-    },
-
-    hasInternalControlSecret () {
-      return !!this.INTERNAL_CONTROL_SECRET;
     },
 
     validateServices () {

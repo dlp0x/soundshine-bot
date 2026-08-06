@@ -46,15 +46,8 @@ vi.mock("fs", () => ({
   mkdirSync: vi.fn(),
 }));
 
-// Mock du service social - contrôlé par test via mockPublishPlaylistUpdate
-const mockPublishPlaylistUpdate = vi.fn().mockResolvedValue({ status: "skipped" });
-vi.mock("#api/services/socialPublishService.js", () => ({
-  publishPlaylistUpdate: (...args) => mockPublishPlaylistUpdate(...args),
-}));
-
 import healthRoute from "#api/routes/health.js";
 import playlistUpdateRoute from "#api/routes/playlist-update.js";
-import { createDiscordGateway } from "#api/gateways/discordGateway.js";
 
 let app;
 let server;
@@ -66,9 +59,6 @@ describe("API Integration Tests", () => {
   let mockStageChannel;
 
   beforeEach(() => {
-    mockPublishPlaylistUpdate.mockReset();
-    mockPublishPlaylistUpdate.mockResolvedValue({ status: "skipped" });
-
     // Create Express app for testing
     app = express();
     app.use(express.json({ limit: "10mb" })); // Augmenter la limite pour les gros payloads
@@ -147,9 +137,8 @@ describe("API Integration Tests", () => {
     });
 
     // Setup routes
-    const gateway = createDiscordGateway(mockClient);
-    app.use("/health", healthRoute(gateway, mockLogger));
-    app.use("/playlist-update", playlistUpdateRoute(gateway, mockLogger));
+    app.use("/health", healthRoute(mockClient, mockLogger));
+    app.use("/playlist-update", playlistUpdateRoute(mockClient, mockLogger));
   });
 
   beforeAll(async () => {
@@ -275,78 +264,6 @@ describe("API Integration Tests", () => {
 
       expect(response.body).toHaveProperty("error");
       expect(response.body.error).toBe("Invalid or missing API token.");
-    });
-  });
-
-  describe("Playlist Update Route - Social flag", () => {
-    it("should not invoke the social placeholder when social is omitted", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic" })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(mockPublishPlaylistUpdate).not.toHaveBeenCalled();
-    });
-
-    it("should not invoke the social placeholder when social=false", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: false })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(mockPublishPlaylistUpdate).not.toHaveBeenCalled();
-    });
-
-    it("should invoke the social placeholder when social=true, after the normal Discord update", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: true })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      // Discord behavior is untouched
-      expect(response.body.details).toEqual({
-        playlistSent: true,
-        stageTopic: true,
-      });
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledWith({
-        playlist: "Test Playlist",
-        topic: "Test topic",
-      });
-    });
-
-    it("should coerce a string 'true' value for social into a real boolean", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: "true" })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it("should not block the Discord update or the API response when the social placeholder fails", async () => {
-      mockPublishPlaylistUpdate.mockRejectedValue(new Error("social boom"));
-
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: true })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(response.body.details).toEqual({
-        playlistSent: true,
-        stageTopic: true,
-      });
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
     });
   });
 

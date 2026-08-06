@@ -25,7 +25,7 @@ export async function listRequests () {
 export async function addRequest ({ artist, title }) {
   const { baseUrl, apiKey } = getApiConfig();
   const { data } = await axios.post(
-    `${baseUrl}/requests/add/`,
+    `${baseUrl}/requests/add`,
     { artist, title },
     {
       headers: { 'x-api-key': apiKey },

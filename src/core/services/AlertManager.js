@@ -22,10 +22,10 @@ class AlertManager {
 
     if (this.webhookUrl) {
       this.webhookClient = new WebhookClient({ url: this.webhookUrl });
-      logger.init?.('Système d\'alertes webhook initialisé');
+      logger.init('Système d\'alertes webhook initialisé');
     }
-    logger.banner?.('Initialisation du bot Discord...');
-    logger.init?.('Système d\'alertes initialisé');
+    logger.banner('Initialisation du bot Discord...');
+    logger.init('Système d\'alertes initialisé');
   }
 
   /**
@@ -351,3 +351,4 @@ class AlertManager {
 const alertManager = new AlertManager();
 
 export default alertManager;
+
