@@ -8,7 +8,7 @@ export default {
       .setName('list')
       .setDescription('Voir les requests en attente'),
 
-  async execute (interaction) {
+  async execute(interaction) {
     try {
       const requests = await listRequests();
 
@@ -20,7 +20,9 @@ export default {
       }
 
       const msg = requests
-        .map((r, index) => `**${index + 1}.** ${r.title} - ${r.artist} (${r.requests} requests)`)
+        .map((r, index) =>
+          `**${index + 1}.** ${r.artist} - ${r.title} · demandé par **${r.username}**`
+        )
         .join('\n');
 
       return await interaction.reply({
