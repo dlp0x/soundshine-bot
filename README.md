@@ -1,172 +1,170 @@
-# soundSHINE Bot
+# soundSHINE Discord Bot v3
 
-Bot Discord pour diffuser soundSHINE Radio dans un Stage Channel, exposer des metriques via une API Express et automatiser quelques actions autour de la station.
+Discord bot powering the soundSHINE radio community.
 
-## Apercu
+This project is a complete rewrite focused on a cleaner architecture, better maintainability, and easier feature development.
 
-- Commandes slash organisees par domaines: radio, station, requests, systeme, fun.
-- Lecture du stream dans un Stage Channel et suivi d'etat du bot.
-- API HTTP securisee pour la sante, les logs, les alertes, les metriques et la mise a jour de playlist.
-- Suite de tests Vitest et scripts utilitaires de developpement.
+## 🚀 Project Goals
 
-## Structure du projet
+The goal of v3 is to provide a reliable Discord integration for soundSHINE Radio, including:
 
-```text
-.
-|-- src/
-|   |-- api/        # Serveur Express, middlewares et routes HTTP
-|   |-- bot/        # Client Discord, commandes, events, handlers et taches
-|   |-- core/       # Services metier et cycle de vie de l'application
-|   |-- tests/      # Tests Vitest
-|   `-- utils/      # Utilitaires partages et acces DB
-|-- scripts/        # Scripts dev, infra, git et outils
-|-- docs/           # Documentation additionnelle
-`-- package.json
+* Discord community features
+* Radio-related commands and information
+* Playlist and broadcast integrations
+* Future automation features
+
+The project is currently under active development.
+
+---
+
+## 🏗️ Branch Strategy
+
+This repository follows a simple Git workflow.
+
+### Protected branches
+
+* `main`
+
+  * Production-ready code only
+  * Locked branch
+  * Changes must come through Pull Requests
+
+* `dev`
+
+  * Main development branch
+  * Integration point for new features and fixes
+
+### Development branches
+
+Create your work branch from `dev`:
+
+```bash
+git checkout dev
+git pull
+
+git checkout -b feature/my-new-feature
 ```
 
-Point d'entree de l'application: [`src/index.js`](/C:/Users/noordotda/Documents/Github/discord-bot/src/index.js)
+Branch naming conventions:
 
-## Prerequis
+| Type         | Usage                                      | Example                      |
+| ------------ | ------------------------------------------ | ---------------------------- |
+| `feature/*`  | New functionality                          | `feature/add-radio-command`  |
+| `fix/*`      | Bug fixes                                  | `fix/handle-invalid-command` |
+| `refactor/*` | Code improvements without behavior changes | `refactor/cleanup-services`  |
+| `docs/*`     | Documentation changes                      | `docs/update-readme`         |
+| `chore/*`    | Maintenance tasks                          | `chore/update-dependencies`  |
 
-- Node.js 18+
-- npm
-- Un bot Discord configure avec les permissions adaptees
+---
 
-## Configuration
+## 🔄 Contribution Workflow
 
-Le projet charge `.env` puis `.env.<env>` comme `.env.dev` ou `.env.prod`.
+1. Create a branch from `dev`
 
-Variables minimales:
-
-```env
-DISCORD_TOKEN=...
-ADMIN_ROLE_ID=...
-VOICE_CHANNEL_ID=...
-PLAYLIST_CHANNEL_ID=...
+```bash
+git checkout dev
+git pull
+git checkout -b feature/my-change
 ```
 
-Variables utiles selon les modules:
+2. Make your changes
 
-```env
-CLIENT_ID=...
-GUILD_ID=...
-DEV_GUILD_ID=...
-BOT_ROLE_NAME=soundSHINE
-STREAM_URL=...
-JSON_URL=...
-API_PORT=3000
-API_TOKEN=...
-LOG_LEVEL=info
-REQ_ROLE_ID=...
-REQ_CHANNEL_ID=...
-UNSPLASH_ACCESS_KEY=...
-RADIODJ_API_URL=...
-RADIODJ_API_KEY=...
-# Stockage local des visuels sociaux générés (Sprint 3, hérité - inutilisé depuis le Sprint 1)
-# Le process de l'app ne doit avoir un accès en écriture qu'a ce dossier /social/,
-# pas a l'ensemble du web root HestiaCP.
-SOCIAL_MEDIA_STORAGE_ROOT=/home/soundshine/web/media.soundshineradio.com/public_html/social
-SOCIAL_MEDIA_PUBLIC_BASE_URL=https://media.soundshineradio.com/social
-# Visuels sociaux prédéfinis par programme (Sprint 1) - requis uniquement pour /playlist-update avec social=true
-# Optionnel, defaut: dossier media/shows/ du repo
-SOCIAL_SHOW_MEDIA_ROOT=...
-# Optionnel, defaut: https://media.soundshineradio.com/shows
-SOCIAL_SHOW_MEDIA_PUBLIC_BASE_URL=...
-# Notifications Discord de publication sociale (Sprint 1) - optionnel, defaut: PLAYLIST_CHANNEL_ID
-SOCIAL_NOTIFICATIONS_CHANNEL_ID=...
-# Publication automatique sur Buffer (Sprint 4) - requis uniquement pour /playlist-update avec social=true
-BUFFER_ACCESS_TOKEN=...
-BUFFER_PROFILE_ID=...
-# Optionnel, defaut: https://api.bufferapp.com/1
-BUFFER_API_BASE_URL=...
+3. Commit using clear messages
+
+Example:
+
+```bash
+git commit -m "feat: add playlist update handler"
 ```
 
-## Demarrage
+4. Push your branch
+
+```bash
+git push origin feature/my-change
+```
+
+5. Open a Pull Request targeting `dev`
+
+---
+
+## 🛠️ Development Setup
+
+### Requirements
+
+* Node.js (version TBD)
+* npm
+* Discord application credentials
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/dlp0x/soundshine-discord-bot-v3.git
+
+cd soundshine-discord-bot-v3
+```
+
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Create your environment file:
+
+```bash
+cp .env.example .env
+```
+
+Configure your variables before starting the bot.
+
+---
+
+## ▶️ Running the Bot
+
+Development mode:
+
+```bash
 npm run dev
 ```
 
-Production:
+Production mode:
 
 ```bash
-npm run prod
+npm start
 ```
 
-## Scripts utiles
+---
 
-```bash
-npm run deploy:dev
-npm run deploy:global
-npm run clear:dev
-npm run clear:global
-npm run db:deploy
-npm run lint
-npm run lint:fix
-npm test
-npm run test:coverage
-npm run test:integration
-npm run test:performance
-npm run test:stress
-npm run test:security
-npm run test:all
-npm run test:ui
-npm run security:check
-npm run context:md
-```
+The goal is to keep business logic separated from external services and Discord-specific code.
 
-Les configurations canoniques sont:
+---
 
-- [`src/config/eslint.config.js`](/C:/Users/noordotda/Documents/Github/discord-bot/src/config/eslint.config.js)
-- [`src/config/vitest.config.js`](/C:/Users/noordotda/Documents/Github/discord-bot/src/config/vitest.config.js)
+## 🧪 Testing
 
-## Commandes Discord
+Tests and validation commands will be documented as the project evolves.
 
-- `/help`
-- `/ping`
-- `/silence <action>`
-- `/radio play`
-- `/radio stop`
-- `/radio nowplaying`
-- `/station schedule`
-- `/station stats`
-- `/station speaker-status`
-- `/station promote-speaker`
-- `/station stream-config`
-- `/request ask`
-- `/request edit`
-- `/request delete`
-- `/request list`
-- `/drink`
-- `/getwallpaper`
+---
 
-## API HTTP
+## 📝 Code Guidelines
 
-Base locale par defaut: `http://localhost:3000`
+* Keep changes focused on one objective
+* Prefer small Pull Requests
+* Avoid mixing refactoring with feature changes
+* Follow existing project patterns
+* Update documentation when behavior changes
 
-- `GET /`
-- `GET /v1/health`
-- `GET /v1/metrics`
-- `GET /v1/logs`
-- `GET/POST /v1/alerts`
-- `POST /v1/send-playlist`
-- `GET/POST /v1/silence`
+---
 
-Exemple:
+## 📌 Project Status
 
-```bash
-curl http://localhost:3000/v1/health
-```
+soundSHINE Discord Bot v3 is currently in active development.
 
-## Notes de maintenance
+The architecture is being rebuilt to provide a cleaner foundation for future features.
 
-- Le dossier `scripts/` fait partie du projet et ne doit plus etre ignore par Git.
-- Les anciennes configs ESLint/Jest ont ete retirees au profit des configs actuelles sous `src/config/`.
-- Les artefacts generes sous `src/node_modules/` sont maintenant ignores.
+---
 
-## Documentation associee
+## 📄 License
 
-- [`docs/SECURITY.md`](/C:/Users/noordotda/Documents/Github/discord-bot/docs/SECURITY.md)
-- [`scripts/README.md`](/C:/Users/noordotda/Documents/Github/discord-bot/scripts/README.md)
-- [`src/tests/README.md`](/C:/Users/noordotda/Documents/Github/discord-bot/src/tests/README.md)
+License information will be added when defined.

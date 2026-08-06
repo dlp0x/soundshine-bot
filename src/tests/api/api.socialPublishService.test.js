@@ -8,29 +8,24 @@ vi.mock("#shared/logging/logger.js", () => ({
   },
 }));
 
-vi.mock("#bot/config.js", () => ({
-  default: {
-    STREAM_URL: undefined,
-  },
+const mockCreateAlert = vi.fn();
+vi.mock("#core/services/AlertManager.js", () => ({
+  default: { createAlert: (...args) => mockCreateAlert(...args) },
 }));
 
-const mockResolveShowMedia = vi.fn();
-vi.mock("#api/services/showMediaResolver.js", () => ({
-  resolveShowMedia: (...args) => mockResolveShowMedia(...args),
+const mockRequestRender = vi.fn();
+vi.mock("#api/services/templatedClient.js", () => ({
+  requestRender: (...args) => mockRequestRender(...args),
+}));
+
+const mockStoreRenderedImage = vi.fn();
+vi.mock("#api/services/mediaStorageService.js", () => ({
+  storeRenderedImage: (...args) => mockStoreRenderedImage(...args),
 }));
 
 const mockPublishToBuffer = vi.fn();
 vi.mock("#api/services/bufferPublisherService.js", () => ({
   publishToBuffer: (...args) => mockPublishToBuffer(...args),
-}));
-
-const mockNotifyPublishSuccess = vi.fn();
-const mockNotifyPublishFailure = vi.fn();
-const mockNotifyMissingMedia = vi.fn();
-vi.mock("#api/services/discordSocialNotifier.js", () => ({
-  notifyPublishSuccess: (...args) => mockNotifyPublishSuccess(...args),
-  notifyPublishFailure: (...args) => mockNotifyPublishFailure(...args),
-  notifyMissingMedia: (...args) => mockNotifyMissingMedia(...args),
 }));
 
 import logger from "#shared/logging/logger.js";
@@ -40,18 +35,19 @@ import {
   buildSocialCaption,
 } from "#api/services/socialPublishService.js";
 
-const FOUND_MEDIA = {
-  found: true,
-  slug: "lofi",
-  localPath: "/app/media/shows/lofi.png",
-  publicUrl: "https://media.soundshineradio.com/shows/lofi.png",
+const SUCCESSFUL_RENDER = {
+  id: "render-123",
+  url: "https://cdn.templated.io/renders/render-123.png",
+  status: "completed",
+  template: "test-template-id",
 };
 
-const MISSING_MEDIA = { found: false, slug: "lofi" };
+const SUCCESSFUL_STORAGE = {
+  localPath: "/home/soundshine/web/media.soundshineradio.com/public_html/social/2026/03/04/abc.jpg",
+  publicUrl: "https://media.soundshineradio.com/social/2026/03/04/abc.jpg",
+};
 
 const SUCCESSFUL_BUFFER = { id: "update-123", status: "sent" };
-
-const GATEWAY = { sendChannelMessage: vi.fn() };
 
 describe("socialPublishService", () => {
   beforeEach(() => {
@@ -67,113 +63,124 @@ describe("socialPublishService", () => {
   });
 
   describe("buildSocialCaption", () => {
-    it("builds a caption with the listening URL and hashtags", () => {
-      const caption = buildSocialCaption("Lofi", "Chill Vibes");
-      expect(caption).toContain("Chill Vibes is live now on soundSHINE!");
-      expect(caption).toContain("https://soundshineradio.com");
-      expect(caption).toContain("#soundSHINE");
-      expect(caption).toContain("#radio");
-      expect(caption).toContain("#Lofi");
+    it("builds a simple caption from the topic and playlist", () => {
+      expect(buildSocialCaption("Lofi", "Chill Vibes")).toBe(
+        "🎶 Chill Vibes is live now on soundSHINE!"
+      );
     });
   });
 
   describe("publishPlaylistUpdate", () => {
-    it("resolves media, publishes to Buffer with the image, and notifies success", async () => {
-      mockResolveShowMedia.mockReturnValue(FOUND_MEDIA);
+    it("renders, stores, and publishes to Buffer, returning a normalized success result", async () => {
+      mockRequestRender.mockResolvedValue(SUCCESSFUL_RENDER);
+      mockStoreRenderedImage.mockResolvedValue(SUCCESSFUL_STORAGE);
       mockPublishToBuffer.mockResolvedValue(SUCCESSFUL_BUFFER);
 
-      const result = await publishPlaylistUpdate({
-        playlist: "Chill Vibes",
-        topic: "Lofi",
-        gateway: GATEWAY,
-      });
+      const result = await publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" });
 
-      expect(mockResolveShowMedia).toHaveBeenCalledWith("Lofi");
+      expect(mockRequestRender).toHaveBeenCalledTimes(1);
+      expect(mockStoreRenderedImage).toHaveBeenCalledWith(SUCCESSFUL_RENDER.url);
+
       expect(mockPublishToBuffer).toHaveBeenCalledTimes(1);
-      expect(mockPublishToBuffer.mock.calls[0][0]).toEqual(
-        expect.objectContaining({ mediaUrl: FOUND_MEDIA.publicUrl })
-      );
-
-      expect(mockNotifyMissingMedia).not.toHaveBeenCalled();
-      expect(mockNotifyPublishSuccess).toHaveBeenCalledTimes(1);
-      expect(mockNotifyPublishSuccess).toHaveBeenCalledWith(GATEWAY, {
-        program: "Lofi",
-        playlist: "Chill Vibes",
-        bufferUpdateId: "update-123",
-        mediaUrl: FOUND_MEDIA.publicUrl,
+      expect(mockPublishToBuffer).toHaveBeenCalledWith({
+        text: "🎶 Test Playlist is live now on soundSHINE!",
+        mediaUrl: SUCCESSFUL_STORAGE.publicUrl,
       });
+      // Never Buffer the temporary Templated URL or anything else.
+      expect(mockPublishToBuffer.mock.calls[0][0].mediaUrl).not.toBe(SUCCESSFUL_RENDER.url);
 
       expect(result).toEqual({
         status: "published",
-        program: "Lofi",
-        playlist: "Chill Vibes",
-        mediaUrl: FOUND_MEDIA.publicUrl,
+        id: "render-123",
+        template: "test-template-id",
+        renderStatus: "completed",
+        templatedUrl: "https://cdn.templated.io/renders/render-123.png",
+        localPath: SUCCESSFUL_STORAGE.localPath,
+        publicUrl: SUCCESSFUL_STORAGE.publicUrl,
         bufferUpdateId: "update-123",
         bufferStatus: "sent",
       });
+      expect(mockCreateAlert).not.toHaveBeenCalled();
     });
 
-    it("still publishes text-only and notifies missing media when no local asset is found", async () => {
-      mockResolveShowMedia.mockReturnValue(MISSING_MEDIA);
-      mockPublishToBuffer.mockResolvedValue(SUCCESSFUL_BUFFER);
-
-      const result = await publishPlaylistUpdate({
-        playlist: "Chill Vibes",
-        topic: "Lofi",
-        gateway: GATEWAY,
-      });
-
-      expect(mockNotifyMissingMedia).toHaveBeenCalledTimes(1);
-      expect(mockNotifyMissingMedia).toHaveBeenCalledWith(GATEWAY, {
-        program: "Lofi",
-        slug: "lofi",
-      });
-
-      expect(mockPublishToBuffer).toHaveBeenCalledWith(
-        expect.objectContaining({ mediaUrl: undefined })
+    it("logs and returns a normalized failure result when Templated rendering fails, without attempting storage or Buffer", async () => {
+      mockRequestRender.mockRejectedValue(
+        new Error("Templated render response is missing required fields (id/url)")
       );
 
-      expect(result).toEqual(
-        expect.objectContaining({ status: "published", mediaUrl: null })
-      );
-      // Publication is never blocked by a missing asset.
-      expect(mockNotifyPublishSuccess).toHaveBeenCalledTimes(1);
+      const result = await publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" });
+
+      expect(result).toEqual({
+        status: "failed",
+        stage: "render",
+        error: "Templated render response is missing required fields (id/url)",
+      });
+      expect(mockStoreRenderedImage).not.toHaveBeenCalled();
+      expect(mockPublishToBuffer).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledTimes(1);
     });
 
-    it("logs and returns a normalized failure result when Buffer publication fails, and notifies failure", async () => {
-      mockResolveShowMedia.mockReturnValue(FOUND_MEDIA);
+    it("does not throw on a render network failure, still returns a normalized failure result", async () => {
+      mockRequestRender.mockRejectedValue(new Error("ECONNREFUSED"));
+
+      await expect(
+        publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" })
+      ).resolves.toEqual(
+        expect.objectContaining({ status: "failed", stage: "render", error: "ECONNREFUSED" })
+      );
+      expect(mockPublishToBuffer).not.toHaveBeenCalled();
+    });
+
+    it("logs and returns a normalized failure result when storage fails, without attempting Buffer", async () => {
+      mockRequestRender.mockResolvedValue(SUCCESSFUL_RENDER);
+      mockStoreRenderedImage.mockRejectedValue(new Error("ENOSPC: no space left on device"));
+
+      const result = await publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" });
+
+      expect(result).toEqual({
+        status: "failed",
+        stage: "storage",
+        error: "ENOSPC: no space left on device",
+        id: "render-123",
+        templatedUrl: "https://cdn.templated.io/renders/render-123.png",
+      });
+      expect(mockPublishToBuffer).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
+
+    it("logs, alerts, and returns a normalized failure result when Buffer publication fails, without blocking Discord (render+storage still succeeded)", async () => {
+      mockRequestRender.mockResolvedValue(SUCCESSFUL_RENDER);
+      mockStoreRenderedImage.mockResolvedValue(SUCCESSFUL_STORAGE);
       mockPublishToBuffer.mockRejectedValue(new Error("Invalid access token"));
 
-      const result = await publishPlaylistUpdate({
-        playlist: "Chill Vibes",
-        topic: "Lofi",
-        gateway: GATEWAY,
-      });
+      const result = await publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" });
 
       expect(result).toEqual({
         status: "failed",
         stage: "publish",
         error: "Invalid access token",
-        program: "Lofi",
-        playlist: "Chill Vibes",
-        mediaUrl: FOUND_MEDIA.publicUrl,
+        id: "render-123",
+        templatedUrl: "https://cdn.templated.io/renders/render-123.png",
+        localPath: SUCCESSFUL_STORAGE.localPath,
+        publicUrl: SUCCESSFUL_STORAGE.publicUrl,
       });
       expect(logger.error).toHaveBeenCalledTimes(1);
-      expect(mockNotifyPublishFailure).toHaveBeenCalledTimes(1);
-      expect(mockNotifyPublishFailure).toHaveBeenCalledWith(GATEWAY, {
-        program: "Lofi",
-        playlist: "Chill Vibes",
-        error: "Invalid access token",
-      });
-      expect(mockNotifyPublishSuccess).not.toHaveBeenCalled();
+      expect(mockCreateAlert).toHaveBeenCalledTimes(1);
+      expect(mockCreateAlert).toHaveBeenCalledWith(
+        "social_buffer_publish_failed",
+        "warning",
+        expect.any(String),
+        expect.objectContaining({ error: "Invalid access token" })
+      );
     });
 
     it("does not throw on a Buffer network failure, still returns a normalized failure result", async () => {
-      mockResolveShowMedia.mockReturnValue(FOUND_MEDIA);
+      mockRequestRender.mockResolvedValue(SUCCESSFUL_RENDER);
+      mockStoreRenderedImage.mockResolvedValue(SUCCESSFUL_STORAGE);
       mockPublishToBuffer.mockRejectedValue(new Error("ECONNREFUSED"));
 
       await expect(
-        publishPlaylistUpdate({ playlist: "Chill Vibes", topic: "Lofi", gateway: GATEWAY })
+        publishPlaylistUpdate({ playlist: "Test Playlist", topic: "Lofi" })
       ).resolves.toEqual(
         expect.objectContaining({ status: "failed", stage: "publish", error: "ECONNREFUSED" })
       );

@@ -318,9 +318,6 @@ describe("API Integration Tests", () => {
       expect(mockPublishPlaylistUpdate).toHaveBeenCalledWith({
         playlist: "Test Playlist",
         topic: "Test topic",
-        gateway: expect.objectContaining({
-          sendChannelMessage: expect.any(Function),
-        }),
       });
     });
 
