@@ -58,6 +58,29 @@ describe("bufferPublisherService", () => {
     expect(result).toEqual({ id: "update-123", status: "sent" });
   });
 
+  it("publishes text-only (no assets/metadata) when mediaUrl is omitted", async () => {
+    axios.post.mockResolvedValue({
+      data: {
+        data: {
+          createPost: {
+            post: { id: "update-456", status: "sent" },
+          },
+        },
+      },
+    });
+
+    const result = await publishToBuffer({
+      text: "🎶 Lofi is live now on soundSHINE!",
+    });
+
+    const [, body] = axios.post.mock.calls[0];
+    expect(body.variables.input.assets).toBeUndefined();
+    expect(body.variables.input.metadata).toBeUndefined();
+    expect(body.variables.input.text).toBe("🎶 Lofi is live now on soundSHINE!");
+
+    expect(result).toEqual({ id: "update-456", status: "sent" });
+  });
+
   it("throws when Buffer rejects the request (API rejection)", async () => {
     const apiError = Object.assign(new Error("Request failed with status code 401"), {
       response: { status: 401, data: { success: false, message: "Invalid access token" } },

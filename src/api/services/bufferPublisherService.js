@@ -53,9 +53,12 @@ function parsePublishResponse (data) {
 }
 
 /**
- * Publie une story Instagram via Buffer.
+ * Publie une mise à jour via Buffer. Quand un `mediaUrl` est fourni, elle
+ * est publiée comme story Instagram (comportement historique). Sans
+ * `mediaUrl` (Sprint 1: aucun visuel local trouvé pour le programme), le
+ * post est envoyé texte seul, sans bloquer la publication.
  *
- * @param {{ text: string, mediaUrl: string }} payload
+ * @param {{ text: string, mediaUrl?: string }} payload
  * @returns {Promise<{ id: string, status: string }>}
  */
 export async function publishToBuffer ({ text, mediaUrl }) {
@@ -78,28 +81,31 @@ export async function publishToBuffer ({ text, mediaUrl }) {
     }
   `;
 
-  const variables = {
-    input: {
-      channelId,
-      text,
-      schedulingType: 'automatic',
-      mode: 'addToQueue',
-      saveToDraft: true,
-      metadata: {
-        instagram: {
-          type: 'story',
-          shouldShareToFeed: false
-        }
-      },
-      assets: [
-        {
-          image: {
-            url: mediaUrl
-          }
-        }
-      ]
-    }
+  const input = {
+    channelId,
+    text,
+    schedulingType: 'automatic',
+    mode: 'addToQueue',
+    saveToDraft: true
   };
+
+  if (mediaUrl) {
+    input.metadata = {
+      instagram: {
+        type: 'story',
+        shouldShareToFeed: false
+      }
+    };
+    input.assets = [
+      {
+        image: {
+          url: mediaUrl
+        }
+      }
+    ];
+  }
+
+  const variables = { input };
 
   const response = await axios.post(
     baseUrl,
