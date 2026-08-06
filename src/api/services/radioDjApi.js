@@ -14,7 +14,7 @@ function getApiConfig () {
 
 export async function listRequests () {
   const { baseUrl, apiKey } = getApiConfig();
-  const { data } = await axios.get(`${baseUrl}/requests`, {
+  const { data } = await axios.get(`${baseUrl}/requests/list`, {
     headers: { 'x-api-key': apiKey },
     timeout: 10000
   });
@@ -25,7 +25,7 @@ export async function listRequests () {
 export async function addRequest ({ artist, title }) {
   const { baseUrl, apiKey } = getApiConfig();
   const { data } = await axios.post(
-    `${baseUrl}/requests`,
+    `${baseUrl}/requests/add/`,
     { artist, title },
     {
       headers: { 'x-api-key': apiKey },
@@ -38,7 +38,7 @@ export async function addRequest ({ artist, title }) {
 
 export async function searchSongs (query, limit = 10) {
   const { baseUrl, apiKey } = getApiConfig();
-  const { data } = await axios.get(`${baseUrl}/search`, {
+  const { data } = await axios.get(`${baseUrl}/requests/search`, {
     headers: { 'x-api-key': apiKey },
     params: { q: query, limit },
     timeout: 10000

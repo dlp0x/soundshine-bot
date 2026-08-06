@@ -2,39 +2,13 @@ import express from 'express';
 import botConfig from '#bot/config.js';
 import { z } from 'zod';
 import logger from '#shared/logging/logger.js';
-import { publishPlaylistUpdate } from '#api/services/socialPublishService.js';
 
 const { API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
-
-// Coerce the incoming `social` value (boolean, string, missing, ...) into a
-// real boolean. Anything falsy/unrecognized/omitted defaults to false.
-const socialFlagSchema = z.preprocess((val) => {
-  if (typeof val === 'boolean') return val;
-  if (typeof val === 'string') return val.trim().toLowerCase() === 'true';
-  return false;
-}, z.boolean());
 
 const playlistSchema = z.object({
   playlist: z.string().min(1, 'Playlist is required'),
   topic: z.string().min(1, 'Topic is required'),
-  social: socialFlagSchema.default(false)
 });
-
-/**
- * Fires the social orchestration entry point without letting failures
- * affect the Discord update flow or the API response. The entry point
- * itself already catches Buffer/media-resolution failures and returns a
- * normalized result, so this is a defense-in-depth backstop.
- */
-const triggerSocialPublish = async ({ playlist, topic }, gateway) => {
-  try {
-    await publishPlaylistUpdate({ playlist, topic, gateway });
-  } catch (socialErr) {
-    logger.error(
-      `⚠️ [social] Social orchestration failed (ignored, Discord update unaffected): ${socialErr.message}`
-    );
-  }
-};
 
 // Fonction pour essayer de récupérer les caractères corrompus
 const tryFixEncoding = async (text) => {
@@ -294,7 +268,7 @@ export default (gateway) => {
 logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
 logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
       if (social === true) {
-        await triggerSocialPublish({ playlist: normalizedPlaylist, topic: normalizedTopic }, gateway);
+        await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
       }
 
       return res.status(200).json({
