@@ -138,18 +138,6 @@ const envSchema = z.object({
   STREAM_URL: optionalUrlSchema(),
   JSON_URL: optionalUrlSchema(),
   RADIODJ_API_URL: optionalUrlSchema(),
-  RADIODJ_API_KEY: optionalStringSchema(),
-  TEMPLATED_API_KEY: optionalStringSchema(),
-  TEMPLATED_TEMPLATE_ID: optionalStringSchema(),
-  TEMPLATED_API_BASE_URL: optionalUrlSchema(),
-  BUFFER_ACCESS_TOKEN: optionalStringSchema(),
-  BUFFER_PROFILE_ID: optionalStringSchema(),
-  BUFFER_CHANNEL_ID: optionalStringSchema(),
-  BUFFER_API_BASE_URL: optionalUrlSchema(),
-  SOCIAL_MEDIA_STORAGE_ROOT: stringWithDefault(
-    '/home/soundshine/web/media.soundshineradio.com/public_html/social'
-  ),
-  SOCIAL_MEDIA_PUBLIC_BASE_URL: urlWithDefault('https://media.soundshineradio.com/social'),
   API_TOKEN: optionalStringSchema(),
   API_PORT: numericStringWithDefault('3000').default('3000'),
   LOG_LEVEL: z
@@ -210,16 +198,7 @@ function buildConfig () {
     STREAM_URL: env.STREAM_URL,
     JSON_URL: env.JSON_URL,
     RADIODJ_API_URL: env.RADIODJ_API_URL,
-    RADIODJ_API_KEY: env.RADIODJ_API_KEY,
-    TEMPLATED_API_KEY: env.TEMPLATED_API_KEY,
-    TEMPLATED_TEMPLATE_ID: env.TEMPLATED_TEMPLATE_ID,
-    TEMPLATED_API_BASE_URL: env.TEMPLATED_API_BASE_URL,
-    BUFFER_ACCESS_TOKEN: env.BUFFER_ACCESS_TOKEN,
-    BUFFER_PROFILE_ID: env.BUFFER_PROFILE_ID,
-    BUFFER_CHANNEL_ID: env.BUFFER_CHANNEL_ID, // Compatibilité avec ton .env actuel
-    BUFFER_API_BASE_URL: env.BUFFER_API_BASE_URL,
-    SOCIAL_MEDIA_STORAGE_ROOT: env.SOCIAL_MEDIA_STORAGE_ROOT,
-    SOCIAL_MEDIA_PUBLIC_BASE_URL: env.SOCIAL_MEDIA_PUBLIC_BASE_URL,
+    RADIODJ_API_KEY: env.RADIODJ_API_URL,
 
     API_TOKEN: env.API_TOKEN,
     API_PORT: env.API_PORT,
@@ -279,14 +258,6 @@ function buildConfig () {
       jsonUrl: env.JSON_URL,
       radioDjUrl: env.RADIODJ_API_URL,
       radioDjKey: env.RADIODJ_API_KEY,
-      templatedApiKey: env.TEMPLATED_API_KEY,
-      templatedTemplateId: env.TEMPLATED_TEMPLATE_ID,
-      templatedApiBaseUrl: env.TEMPLATED_API_BASE_URL,
-      bufferAccessToken: env.BUFFER_ACCESS_TOKEN,
-      bufferProfileId: env.BUFFER_PROFILE_ID,
-      bufferApiBaseUrl: env.BUFFER_API_BASE_URL,
-      socialMediaStorageRoot: env.SOCIAL_MEDIA_STORAGE_ROOT,
-      socialMediaPublicBaseUrl: env.SOCIAL_MEDIA_PUBLIC_BASE_URL
     },
 
     hasUnsplash () {
@@ -295,18 +266,6 @@ function buildConfig () {
 
     hasStreamService () {
       return !!(this.STREAM_URL && this.JSON_URL);
-    },
-
-    hasTemplated () {
-      return !!(this.TEMPLATED_API_KEY && this.TEMPLATED_TEMPLATE_ID);
-    },
-
-    hasBuffer () {
-      return !!(this.BUFFER_ACCESS_TOKEN && this.BUFFER_PROFILE_ID);
-    },
-
-    hasMediaStorage () {
-      return !!(this.SOCIAL_MEDIA_STORAGE_ROOT && this.SOCIAL_MEDIA_PUBLIC_BASE_URL);
     },
 
     validateServices () {
@@ -329,11 +288,6 @@ function buildConfig () {
     'JSON_URL',
     'RADIODJ_API_URL',
     'RADIODJ_API_KEY',
-    'TEMPLATED_API_KEY',
-    'TEMPLATED_TEMPLATE_ID',
-    'BUFFER_ACCESS_TOKEN',
-    'BUFFER_CHANNEL_ID',
-    'BUFFER_PROFILE_ID'
   ].filter((key) => !config[key]);
 
   if (missingOptionalVars.length > 0 && config.NODE_ENV !== 'test') {
