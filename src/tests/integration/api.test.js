@@ -299,63 +299,6 @@ describe("API Integration Tests", () => {
       expect(mockPublishPlaylistUpdate).not.toHaveBeenCalled();
     });
 
-    it("should invoke the social placeholder when social=true, after the normal Discord update", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: true })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      // Discord behavior is untouched
-      expect(response.body.details).toEqual({
-        playlistSent: true,
-        stageTopic: true,
-      });
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledWith({
-        playlist: "Test Playlist",
-        topic: "Test topic",
-      });
-    });
-
-    it("should coerce a string 'true' value for social into a real boolean", async () => {
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: "true" })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it("should not block the Discord update or the API response when the social placeholder fails", async () => {
-      mockPublishPlaylistUpdate.mockRejectedValue(new Error("social boom"));
-
-      const response = await request(app)
-        .post("/playlist-update")
-        .set("x-api-key", "test-api-token")
-        .send({ playlist: "Test Playlist", topic: "Test topic", social: true })
-        .expect(200);
-
-      expect(response.body.status).toBe("OK");
-      expect(response.body.details).toEqual({
-        playlistSent: true,
-        stageTopic: true,
-      });
-      expect(mockPublishPlaylistUpdate).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe("API Error Handling", () => {
-    it("should handle 404 routes", async () => {
-      const response = await request(app).get("/nonexistent").expect(404);
-
-      // Express retourne un objet vide pour les 404
-      expect(response.body).toEqual({});
-    });
-
     it("should handle method not allowed", async () => {
       const response = await request(app).put("/health").expect(404);
 

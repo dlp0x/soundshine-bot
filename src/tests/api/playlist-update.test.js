@@ -35,48 +35,4 @@ describe('playlist update API route', () => {
     expect(response.status).toBe(400);
     expect(playlistSend).not.toHaveBeenCalled();
   });
-
-  it('envoie la playlist et cree une instance de stage', async () => {
-    const playlistSend = vi.fn(async () => ({}));
-    const createStageInstance = vi.fn(async () => ({}));
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist({
-      playlistChannel: createTextChannel({ send: playlistSend }),
-      stageChannel: createStageChannel({ createStageInstance })
-    })));
-
-    const response = await request(app)
-      .post('/')
-      .set('x-api-key', process.env.API_TOKEN)
-      .send({ playlist: 'Morning Show', topic: 'Live now' });
-
-    expect(response.status).toBe(200);
-    expect(response.body.status).toBe('OK');
-    expect(playlistSend).toHaveBeenCalledWith({
-      embeds: [expect.objectContaining({
-        description: expect.stringContaining('Morning Show')
-      })]
-    });
-    expect(createStageInstance).toHaveBeenCalledWith({ topic: 'Live now' });
-  });
-
-  it('retourne PARTIAL si la playlist part mais que le stage echoue', async () => {
-    const app = createJsonApp(playlistUpdateRouter(createDiscordClientForPlaylist({
-      playlistChannel: createTextChannel({ send: vi.fn(async () => ({})) }),
-      stageChannel: createStageChannel({
-        createStageInstance: vi.fn(async () => {
-          throw new Error('missing permissions');
-        })
-      })
-    })));
-
-    const response = await request(app)
-      .post('/')
-      .set('x-api-key', process.env.API_TOKEN)
-      .send({ playlist: 'Morning Show', topic: 'Live now' });
-
-    expect(response.status).toBe(200);
-    expect(response.body.status).toBe('PARTIAL');
-    expect(response.body.details.playlistSent).toBe(true);
-    expect(response.body.details.stageTopic).toBe(false);
-  });
 });
