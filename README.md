@@ -43,6 +43,11 @@ DISCORD_TOKEN=...
 ADMIN_ROLE_ID=...
 VOICE_CHANNEL_ID=...
 PLAYLIST_CHANNEL_ID=...
+REQ_ROLE_ID=...
+STREAM_URL=...
+JSON_URL=...
+API_PORT=3000
+API_TOKEN=...
 ```
 
 Variables utiles selon les modules:
@@ -52,31 +57,10 @@ CLIENT_ID=...
 GUILD_ID=...
 DEV_GUILD_ID=...
 BOT_ROLE_NAME=soundSHINE
-STREAM_URL=...
-JSON_URL=...
-API_PORT=3000
-API_TOKEN=...
 LOG_LEVEL=info
-REQ_ROLE_ID=...
-REQ_CHANNEL_ID=...
 UNSPLASH_ACCESS_KEY=...
 RADIODJ_API_URL=...
 RADIODJ_API_KEY=...
-# Rendu visuel social (Templated.io) - requis uniquement pour /playlist-update avec social=true
-TEMPLATED_API_KEY=...
-TEMPLATED_TEMPLATE_ID=...
-# Optionnel, defaut: https://api.templated.io/v1
-TEMPLATED_API_BASE_URL=...
-# Stockage local des visuels sociaux générés (Sprint 3)
-# Le process de l'app ne doit avoir un accès en écriture qu'a ce dossier /social/,
-# pas a l'ensemble du web root HestiaCP.
-SOCIAL_MEDIA_STORAGE_ROOT=/home/soundshine/web/media.soundshineradio.com/public_html/social
-SOCIAL_MEDIA_PUBLIC_BASE_URL=https://media.soundshineradio.com/social
-# Publication automatique sur Buffer (Sprint 4) - requis uniquement pour /playlist-update avec social=true
-BUFFER_ACCESS_TOKEN=...
-BUFFER_PROFILE_ID=...
-# Optionnel, defaut: https://api.bufferapp.com/1
-BUFFER_API_BASE_URL=...
 ```
 
 ## Demarrage
@@ -103,14 +87,6 @@ npm run db:deploy
 npm run lint
 npm run lint:fix
 npm test
-npm run test:coverage
-npm run test:integration
-npm run test:performance
-npm run test:stress
-npm run test:security
-npm run test:all
-npm run test:ui
-npm run security:check
 npm run context:md
 ```
 
@@ -120,24 +96,20 @@ Les configurations canoniques sont:
 - [`src/config/vitest.config.js`](/C:/Users/noordotda/Documents/Github/discord-bot/src/config/vitest.config.js)
 
 ## Commandes Discord
-
 - `/help`
 - `/ping`
-- `/silence <action>`
-- `/radio play`
-- `/radio stop`
 - `/radio nowplaying`
 - `/station schedule`
-- `/station stats`
-- `/station speaker-status`
-- `/station promote-speaker`
-- `/station stream-config`
 - `/request ask`
 - `/request edit`
-- `/request delete`
-- `/request list`
 - `/drink`
 - `/getwallpaper`
+
+## Commandes Discord (admin radio + modération)
+- `/request delete`
+- `/request list`
+- `/station stats`
+- `/station stream-config`
 
 ## API HTTP
 
@@ -145,11 +117,7 @@ Base locale par defaut: `http://localhost:3000`
 
 - `GET /`
 - `GET /v1/health`
-- `GET /v1/metrics`
-- `GET /v1/logs`
-- `GET/POST /v1/alerts`
-- `POST /v1/send-playlist`
-- `GET/POST /v1/silence`
+- `POST /v1/playlist-update`
 
 Exemple:
 

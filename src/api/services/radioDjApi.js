@@ -40,7 +40,7 @@ export async function searchSongs (query, limit = 10) {
   const { baseUrl, apiKey } = getApiConfig();
   const { data } = await axios.get(`${baseUrl}/search`, {
     headers: { 'x-api-key': apiKey },
-    params: { q: query, limit },
+    params: { query: query, limit },
     timeout: 10000
   });
 
