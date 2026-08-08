@@ -1,12 +1,12 @@
 {
   "name": "radiodj-api",
   "version": "2.0.0",
-  "description": "RadioDJ REST API — site web + Discord bot",
-  "main": "src/server.js",
+  "description": "RadioDJ API",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
