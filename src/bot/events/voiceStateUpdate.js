@@ -1,0 +1,28 @@
+// ========================================
+// bot/events/voiceStateUpdate.js - Gestion des changements d'état vocal
+// ========================================
+
+import { Events } from 'discord.js';
+import logger from '#shared/logging/logger.js';
+import { handleJoinToCreate } from '../services/tempVcService.js';
+
+export default {
+  name: Events.VoiceStateUpdate,
+  async execute (oldState, newState) {
+    try {
+      // Gérer les changements d'état vocal pour le monitoring des stages
+
+      // Gérer le système Join-to-Create des salons temporaires
+      await handleJoinToCreate(oldState, newState);
+
+      logger.debug('🎭 Événement VoiceStateUpdate traité', {
+        guildId: newState.guild.id,
+        userId: newState.member?.id,
+        oldChannel: oldState.channelId,
+        newChannel: newState.channelId
+      });
+    } catch (error) {
+      logger.error('Erreur lors du traitement de VoiceStateUpdate:', error);
+    }
+  }
+};

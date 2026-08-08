@@ -1,0 +1,4 @@
+[alias]
+  push-safe = "!f() { branch=$(git rev-parse --abbrev-ref HEAD); if [ \"$branch\" = \"main\" ]; then echo '🚫 Pas de push sur main !'; exit 1; else git push \"$@\"; fi }; f"
+  update-develop = "!git checkout develop && git pull origin develop && git merge origin/main && git push origin develop"
+

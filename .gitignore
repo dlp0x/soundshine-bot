@@ -1,0 +1,266 @@
+# ========================================
+# .gitignore - soundSHINE Bot
+# ========================================
+
+# ========================================
+# Logs et fichiers de diagnostic
+# ========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ========================================
+# Couverture de tests
+# ========================================
+coverage/
+src/node_modules/
+*.lcov
+.nyc_output
+lib-cov
+
+# ========================================
+# Dépendances
+# ========================================
+node_modules/
+jspm_packages/
+bower_components/
+# ========================================
+# Cache et fichiers temporaires
+# ========================================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.microbundle-cache/
+.fusebox/
+.temp/
+.tmp/
+
+# ========================================
+# Build et distribution
+# ========================================
+dist/
+build/
+.next/
+out/
+.nuxt/
+.vuepress/dist
+**/.vitepress/dist
+**/.vitepress/cache
+.docusaurus
+.serverless/
+
+# ========================================
+# Variables d'environnement
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.dev
+.env.prod
+.env.staging
+.env.example
+
+# ========================================
+# Base de données et données sensibles
+# ========================================
+databases/
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+temp/
+
+# ========================================
+# Fichiers de sécurité
+# ========================================
+security/attack-tester.js
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.p8
+*.p8e
+*.p8s
+*.p8t
+*.p8u
+*.p8v
+*.p8w
+*.p8x
+*.p8y
+*.p8z
+
+# ========================================
+# Fichiers système
+# ========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========================================
+# Fichiers d'éditeur
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.#*
+#*#
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ========================================
+# Fichiers de développement
+# ========================================
+*.tgz
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+yarn.lock
+pnpm-lock.yaml
+package-lock.json.backup
+
+# ========================================
+# Fichiers de test
+# ========================================
+test-results/
+playwright-report/
+test-results.xml
+coverage-final.json
+*.test.js.snap
+*.spec.js.snap
+
+# ========================================
+# Fichiers de déploiement
+# ========================================
+.dynamodb/
+.tern-port
+.vscode-test
+
+# ========================================
+# Fichiers de monitoring
+# ========================================
+*.pid
+*.seed
+*.pid.lock
+node_repl_history
+
+# ========================================
+# Fichiers de communication IA
+# ========================================
+chatgpt-project-context.json
+chatgpt-project-context.md
+z_contexte.txt
+context.md
+
+# ========================================
+# Fichiers de backup
+# ========================================
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# ========================================
+# Fichiers de logs spécifiques au bot
+# ========================================
+bot-*.log
+api-*.log
+security-*.log
+audit-*.log
+
+# ========================================
+# Fichiers de configuration locale
+# ========================================
+config/local.*
+config/dev.*
+config/prod.*
+
+# ========================================
+# Fichiers de données temporaires
+# ========================================
+uploads/
+downloads/
+temp/
+tmp/
+
+# ========================================
+# Fichiers de métriques et monitoring
+# ========================================
+metrics/
+stats/
+analytics/
+
+# ========================================
+# Fichiers de documentation générée
+# ========================================
+docs/generated/
+docs/api/
+docs/build/
+
+# ========================================
+# Fichiers de Docker
+# ========================================
+.dockerignore
+docker-compose.override.yml
+docker-compose.*.yml
+!docker-compose.yml
+
+# ========================================
+# Fichiers de CI/CD
+# ========================================
+.github/workflows/*.yml.bak
+.github/workflows/*.yaml.bak
+.gitlab-ci.yml.bak
+.travis.yml.bak
+
+# ========================================
+# Fichiers de sécurité supplémentaires
+# ========================================
+secrets/
+keys/
+tokens/
+credentials/
+auth/
+security/
+
+docker/
