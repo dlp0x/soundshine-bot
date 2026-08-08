@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
-import addSubcommand from './requests.js';
 import searchSubcommand from './requests-search.js';
+import listSubcommand from './requests-list.js';
 import config from '../../config.js';
 
 export default {
@@ -8,8 +8,8 @@ export default {
     .setName('requests')
     .setDescription('Gerer les requests de morceaux')
     .setDMPermission(false)
-    .addSubcommand(addSubcommand.builder)
-    .addSubcommand(searchSubcommand.builder),
+    .addSubcommand(searchSubcommand.builder)
+    .addSubcommand(listSubcommand.builder),
 
   async execute (interaction) {
     const subcommand = interaction.options.getSubcommand();
@@ -22,10 +22,10 @@ export default {
     }
 
     switch (subcommand) {
-    case 'add':
-      return await addSubcommand.execute(interaction);
     case 'search':
       return await searchSubcommand.execute(interaction);
+    case 'list':
+      return await listSubcommand.execute(interaction);
     default:
       return await interaction.reply({
         content: 'Sous-commande inconnue.',

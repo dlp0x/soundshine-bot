@@ -11,8 +11,12 @@ vi.mock('#core/services/ScheduleService.js', () => ({
     }))
   }
 }));
+vi.mock('#api/services/radioDjApi.js', () => ({
+  addRequest: vi.fn()
+}));
 
 const { handleButtonInteraction } = await import('#bot/handlers/ButtonHandler.js');
+const radioDjApi = await import('#api/services/radioDjApi.js');
 
 describe('ButtonHandler', () => {
   beforeEach(() => {
@@ -57,6 +61,48 @@ describe('ButtonHandler', () => {
     await handleButtonInteraction(interaction);
 
     expect(interaction.update.mock.calls[0][0].content).toContain('Impossible');
+  });
+
+  it('ajoute une request quand le bouton "Demander" est clique', async () => {
+    radioDjApi.addRequest.mockResolvedValue({ artist: 'A', title: 'T' });
+    const interaction = createInteraction({
+      customId: 'request_add_42',
+      type: 'button',
+      user: { id: '1', tag: 'tester#0001', username: 'tester' }
+    });
+
+    const result = await handleButtonInteraction(interaction);
+
+    expect(radioDjApi.addRequest).toHaveBeenCalledWith({ songID: 42, username: 'tester#0001' });
+    expect(result.success).toBe(true);
+    expect(interaction.update).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('A - T'),
+      components: []
+    }));
+  });
+
+  it('previent quand le morceau demande est introuvable (404)', async () => {
+    radioDjApi.addRequest.mockRejectedValue({ response: { status: 404 } });
+    const interaction = createInteraction({
+      customId: 'request_add_99',
+      type: 'button'
+    });
+
+    await handleButtonInteraction(interaction);
+
+    expect(lastReplyContent(interaction)).toContain('introuvable');
+  });
+
+  it('previent quand le morceau a deja ete demande recemment (409)', async () => {
+    radioDjApi.addRequest.mockRejectedValue({ response: { status: 409 } });
+    const interaction = createInteraction({
+      customId: 'request_add_7',
+      type: 'button'
+    });
+
+    await handleButtonInteraction(interaction);
+
+    expect(lastReplyContent(interaction)).toContain('déjà été demandé');
   });
 
   it('repond aux boutons inconnus sans lancer d exception', async () => {

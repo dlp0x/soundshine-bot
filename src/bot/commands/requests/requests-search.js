@@ -1,6 +1,8 @@
-import { MessageFlags } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from 'discord.js';
 import { searchSongs } from '#api/services/radioDjApi.js';
 import logger from '#shared/logging/logger.js';
+
+const MAX_BUTTONS_PER_ROW = 5;
 
 export default {
   builder: (subcommand) =>
@@ -34,12 +36,33 @@ export default {
         });
       }
 
-      const msg = songs
-        .map((song, index) => `**${index + 1}.** ${song.artist} - ${song.title}`)
-        .join('\n');
+      const embed = new EmbedBuilder()
+        .setColor(0x1abc9c)
+        .setTitle(`Resultats pour "${query}"`)
+        .setDescription(
+          songs
+            .map((song, index) => `**${index + 1}.** ${song.artist} - ${song.title}`)
+            .join('\n')
+        )
+        .setFooter({ text: 'Clique sur un bouton pour faire ta demande.' });
+
+      const rows = [];
+      for (let i = 0; i < songs.length; i += MAX_BUTTONS_PER_ROW) {
+        const chunk = songs.slice(i, i + MAX_BUTTONS_PER_ROW);
+        rows.push(
+          new ActionRowBuilder().addComponents(
+            chunk.map((song, chunkIndex) =>
+              new ButtonBuilder()
+                .setCustomId(`request_add_${song.ID}`)
+                .setLabel(`Demander #${i + chunkIndex + 1}`)
+                .setStyle(ButtonStyle.Primary))
+          )
+        );
+      }
 
       return await interaction.reply({
-        content: msg.slice(0, 2000),
+        embeds: [embed],
+        components: rows,
         flags: MessageFlags.Ephemeral
       });
     } catch (error) {

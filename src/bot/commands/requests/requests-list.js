@@ -20,7 +20,7 @@ export default {
       }
 
       const msg = requests
-        .map((r, index) => `**${index + 1}.** ${r.title} - ${r.artist} (${r.requests} requests)`)
+        .map((r, index) => `**${index + 1}.** ${r.title} - ${r.artist} (demandé par ${r.username})`)
         .join('\n');
 
       return await interaction.reply({
