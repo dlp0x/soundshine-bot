@@ -88,14 +88,6 @@ npm run db:deploy
 npm run lint
 npm run lint:fix
 npm test
-npm run test:coverage
-npm run test:integration
-npm run test:performance
-npm run test:stress
-npm run test:security
-npm run test:all
-npm run test:ui
-npm run security:check
 npm run context:md
 ```
 
@@ -105,24 +97,20 @@ Les configurations canoniques sont:
 - [`src/config/vitest.config.js`](/C:/Users/noordotda/Documents/Github/discord-bot/src/config/vitest.config.js)
 
 ## Commandes Discord
-
 - `/help`
 - `/ping`
-- `/silence <action>`
-- `/radio play`
-- `/radio stop`
 - `/radio nowplaying`
 - `/station schedule`
-- `/station stats`
-- `/station speaker-status`
-- `/station promote-speaker`
-- `/station stream-config`
 - `/request ask`
 - `/request edit`
-- `/request delete`
-- `/request list`
 - `/drink`
 - `/getwallpaper`
+
+## Commandes Discord (admin radio + modération)
+- `/request delete`
+- `/request list`
+- `/station stats`
+- `/station stream-config`
 
 ## API HTTP
 
@@ -130,11 +118,7 @@ Base locale par defaut: `http://localhost:3000`
 
 - `GET /`
 - `GET /v1/health`
-- `GET /v1/metrics`
-- `GET /v1/logs`
-- `GET/POST /v1/alerts`
 - `POST /v1/playlist-update`
-- `GET/POST /v1/silence`
 
 Exemple:
 
