@@ -106,3 +106,11 @@ export function lastReplyContent (interaction) {
   const call = interaction.reply.mock.calls.at(-1)?.[0];
   return typeof call === 'string' ? call : call?.content;
 }
+
+export function lastReplyPayload (interaction) {
+  return interaction.reply.mock.calls.at(-1)?.[0];
+}
+
+export function lastUpdatePayload (interaction) {
+  return interaction.update.mock.calls.at(-1)?.[0];
+}

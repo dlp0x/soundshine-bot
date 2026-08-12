@@ -24,6 +24,10 @@ export async function handleButtonInteraction (interaction, _client, _db, _confi
       return await handleFullStatsButton(interaction);
     }
 
+    if (customId.startsWith('request_add_')) {
+      return await handleRequestAddButton(interaction);
+    }
+
     // Bouton non reconnu
     await interaction.reply({
       content: '❌ Bouton non reconnu',
@@ -82,6 +86,52 @@ async function handleScheduleButton (interaction, customId) {
   });
 
   return { success: true, message: 'BUTTON_HANDLED', ephemeral: false };
+}
+
+/**
+ * Gérer le bouton "Demander" sur les résultats de /requests search
+ */
+async function handleRequestAddButton (interaction) {
+  const songID = Number(interaction.customId.replace('request_add_', ''));
+  const username = interaction.user.tag;
+
+  try {
+    const { addRequest } = await import('#api/services/radioDjApi.js');
+    const song = await addRequest({ songID, username });
+
+    await interaction.update({
+      content: `✅ Demande ajoutée: **${song?.artist} - ${song?.title}**`,
+      embeds: [],
+      components: []
+    });
+
+    return { success: true, message: 'BUTTON_HANDLED', ephemeral: false };
+  } catch (error) {
+    const status = error?.response?.status;
+
+    if (status === 404) {
+      await interaction.reply({
+        content: '❌ Morceau introuvable dans RadioDJ.',
+        flags: 64 // MessageFlags.Ephemeral
+      });
+      return { success: true, message: 'BUTTON_HANDLED', ephemeral: false };
+    }
+
+    if (status === 409) {
+      await interaction.reply({
+        content: '⏳ Ce morceau a déjà été demandé récemment, réessaie plus tard.',
+        flags: 64 // MessageFlags.Ephemeral
+      });
+      return { success: true, message: 'BUTTON_HANDLED', ephemeral: false };
+    }
+
+    logger.error('Erreur lors de l\'ajout de la demande via bouton:', error);
+    await interaction.reply({
+      content: '❌ Erreur lors de l\'ajout de la demande.',
+      flags: 64 // MessageFlags.Ephemeral
+    });
+    return { success: true, message: 'BUTTON_HANDLED', ephemeral: false };
+  }
 }
 
 /**
