@@ -138,6 +138,7 @@ const envSchema = z.object({
   STREAM_URL: optionalUrlSchema(),
   JSON_URL: optionalUrlSchema(),
   RADIODJ_API_URL: optionalUrlSchema(),
+  RADIODJ_API_KEY: optionalStringSchema(),
   API_TOKEN: optionalStringSchema(),
   API_PORT: numericStringWithDefault('3000').default('3000'),
   LOG_LEVEL: z
@@ -198,7 +199,7 @@ function buildConfig () {
     STREAM_URL: env.STREAM_URL,
     JSON_URL: env.JSON_URL,
     RADIODJ_API_URL: env.RADIODJ_API_URL,
-    RADIODJ_API_KEY: env.RADIODJ_API_URL,
+    RADIODJ_API_KEY: env.RADIODJ_API_KEY,
 
     API_TOKEN: env.API_TOKEN,
     API_PORT: env.API_PORT,
