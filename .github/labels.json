@@ -1,0 +1,14 @@
+[
+    { "name": "feature", "color": "a2eeef", "description": "Nouvelle fonctionnalité" },
+    { "name": "bug", "color": "d73a4a", "description": "Quelque chose ne fonctionne pas" },
+    { "name": "task", "color": "0075ca", "description": "Tâche à accomplir" },
+    { "name": "decision", "color": "0e8a16", "description": "Décision prise ou à valider" },
+    { "name": "rfc", "color": "fbca04", "description": "Request for Comments" },
+    { "name": "todo", "color": "ededed", "description": "À faire" },
+    { "name": "in-progress", "color": "bfdadc", "description": "En cours de traitement" },
+    { "name": "review", "color": "eae723", "description": "En attente de révision" },
+    { "name": "priority:high", "color": "b60205", "description": "Priorité haute - Urgent" },
+    { "name": "priority:medium", "color": "e99695", "description": "Priorité moyenne" },
+    { "name": "priority:low", "color": "c5def5", "description": "Priorité basse" }
+  ]
+  
