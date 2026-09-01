@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import scheduleSubcommand from './schedule.js';
 import statsSubcommand from './stats.js';
-import config from '../../config.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -14,7 +13,6 @@ export default {
   async execute (interaction) {
     const subcommand = interaction.options.getSubcommand();
 
-    
 
     switch (subcommand) {
     case 'schedule':

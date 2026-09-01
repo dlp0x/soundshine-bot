@@ -131,7 +131,7 @@ async function handlePlayCommand (interaction) {
     // 🔥 ÉTAPE 3 : Enregistrer les écouteurs d'événements AVANT de lancer la lecture
     player.once(AudioPlayerStatus.Playing, async () => {
       logger.info('🎵 Événement Playing détecté (Le son sort !)');
-      
+
       if (promotionResult.success) {
         await interaction.editReply('▶️ Stream lancé dans le stage channel. 🎤 Bot promu en speaker automatiquement.');
       } else {

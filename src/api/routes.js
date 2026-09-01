@@ -12,8 +12,8 @@ export default function loadRoutes (app, client, logger) {
       timestamp: new Date().toISOString(),
       endpoints: {
         health: '/v1/health',
-        playlist: '/v1/playlist-update',
-        
+        playlist: '/v1/playlist-update'
+
       }
     });
   });

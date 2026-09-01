@@ -63,33 +63,6 @@ function optionalUrlSchema () {
   }, z.string().optional());
 }
 
-function stringWithDefault (defaultValue) {
-  return z.preprocess((value) => {
-    if (typeof value === 'undefined' || value === null || value === '') {
-      return defaultValue;
-    }
-
-    return String(value);
-  }, z.string()).default(defaultValue);
-}
-
-function urlWithDefault (defaultValue) {
-  return z.preprocess((value) => {
-    if (typeof value === 'undefined' || value === null || value === '') {
-      return defaultValue;
-    }
-
-    const stringValue = String(value);
-
-    try {
-      new URL(stringValue);
-      return stringValue;
-    } catch {
-      return defaultValue;
-    }
-  }, z.string()).default(defaultValue);
-}
-
 function numericStringWithDefault (defaultValue) {
   return z.preprocess((value) => {
     if (typeof value === 'undefined' || value === null || value === '') {
@@ -258,7 +231,7 @@ function buildConfig () {
       streamUrl: env.STREAM_URL,
       jsonUrl: env.JSON_URL,
       radioDjUrl: env.RADIODJ_API_URL,
-      radioDjKey: env.RADIODJ_API_KEY,
+      radioDjKey: env.RADIODJ_API_KEY
     },
 
     hasUnsplash () {
@@ -288,7 +261,7 @@ function buildConfig () {
     'STREAM_URL',
     'JSON_URL',
     'RADIODJ_API_URL',
-    'RADIODJ_API_KEY',
+    'RADIODJ_API_KEY'
   ].filter((key) => !config[key]);
 
   if (missingOptionalVars.length > 0 && config.NODE_ENV !== 'test') {

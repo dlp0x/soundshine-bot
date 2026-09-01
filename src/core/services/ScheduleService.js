@@ -41,13 +41,13 @@ class ScheduleService {
 
       const scheduleData = fs.readFileSync(this.schedulePath, 'utf-8');
       let schedule;
-try {
-  schedule = JSON.parse(scheduleData);
-} catch (error) {
-  logger.error('Schedule JSON invalide:', error);
-  return this.getDefaultSchedule();
-}
-      
+      try {
+        schedule = JSON.parse(scheduleData);
+      } catch (error) {
+        logger.error('Schedule JSON invalide:', error);
+        return this.getDefaultSchedule();
+      }
+
 
       // Validation basique
       if (
@@ -78,8 +78,8 @@ try {
     try {
       const schedule = await this.loadSchedule();
       const langSchedule = schedule.schedules[language];
-      console.log('language:', language);
-console.log('langSchedule:', langSchedule);
+      logger.info('language:', language);
+      logger.info('langSchedule:', langSchedule);
 
       if (!langSchedule) {
         logger.warn(

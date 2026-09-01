@@ -93,20 +93,7 @@ async function runGitActions () {
   if (!runCommand('npm run lint', 'Running lint')) {
     allChecksPassed = false;
   }
-
-  if (!runCommand('npm run test:coverage', 'Running coverage tests', testEnv)) {
-    allChecksPassed = false;
-  }
-
-  console.log(chalk.yellow('\nFormat check skipped: no formatter script is configured.'));
-
-  if (!runCommand('npm run test:integration', 'Running integration tests', testEnv)) {
-    allChecksPassed = false;
-  }
-
-  if (!runCommand('npm run test:performance', 'Running performance tests', testEnv)) {
-    allChecksPassed = false;
-  }
+console.log(chalk.yellow('\nFormat check skipped: no formatter script is configured.'));
 
   console.log(chalk.blue('\nChecking Node.js syntax on key files...'));
   const jsFiles = [

@@ -288,17 +288,17 @@ class Monitor {
       this.handle521Error(error, context);
       return;
     }
-  
+
     const errorId = generateErrorId();
-  
+
     this.logger.error(`[${errorId}] Erreur critique [${context}]: ${error.message}`, {
       errorId,
       context,
       stack: error.stack
     });
-  
+
     this.sendCriticalAlert(error, errorId, context);
-  
+
     if (this.shouldShutdown(error)) {
       this.logger.error('Erreur critique détectée, arrêt de l\'application...');
       process.exit(1);

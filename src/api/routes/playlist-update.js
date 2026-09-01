@@ -7,7 +7,7 @@ const { API_TOKEN, PLAYLIST_CHANNEL_ID } = botConfig;
 
 const playlistSchema = z.object({
   playlist: z.string().min(1, 'Playlist is required'),
-  topic: z.string().min(1, 'Topic is required'),
+  topic: z.string().min(1, 'Topic is required')
 });
 
 
@@ -185,7 +185,7 @@ export default (client) => {
           details: parseResult.error.errors
         });
       }
-      const { playlist, topic, social } = parseResult.data;
+      const { playlist, topic } = parseResult.data;
 
       // Normalisation des textes pour gérer les accents
       const normalizedPlaylist = await ensureAccentEncoding(playlist);
@@ -214,7 +214,6 @@ export default (client) => {
       logger.info(`Playlist normalisé: ${normalizedPlaylist}`);
 
       let playlistSent = false;
-      let stageTopic = false;
 
       logger.info('=== DÉBUT DU TRAITEMENT ===');
 
@@ -263,19 +262,14 @@ export default (client) => {
         logger.error(`Code d'erreur embed: ${embedErr.code}`);
         // Continue quand même pour tester le stage channel
       }
-logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
-logger.info(`SOCIAL FLAG VALUE: ${social} (${typeof social})`);
-      if (social === true) {
-        await triggerSocialPlaceholder({ playlist: normalizedPlaylist, topic: normalizedTopic });
-      }
-
+      logger.info('=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===');
       return res.status(200).json({
         status: 'OK',
         message: 'Playlist mise à jour avec succès.',
         playlist: normalizedPlaylist,
         topic: normalizedTopic,
         details: {
-          playlistSent,
+          playlistSent
         }
       });
     } catch (err) {

@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
 import nowplayingSubcommand from './nowplaying.js';
-import config from '../../config.js';
 
 export default {
   data: new SlashCommandBuilder()
